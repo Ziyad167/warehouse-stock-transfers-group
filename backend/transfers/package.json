@@ -1,0 +1,20 @@
+{
+  "name": "transfers",
+  "version": "1.0.0",
+  "description": "Transfer Request and Approval service",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node --watch server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1178.0",
+    "@aws-sdk/lib-dynamodb": "^3.1178.0",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.10",
+    "express": "^5.3.0"
+  }
+}
