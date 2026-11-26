@@ -3,6 +3,7 @@
 #   1) DynamoDB: 5 tables
 #   2) IAM: a role with a least-privilege policy
 #   3) S3: a bucket that serves the frontend
+#   4) SNS + SQS: low-stock alerts (SNS sends them, the SQS queue keeps them)
 # Run from the project root, in Git Bash:   bash infra/setup-floci.sh
 # Safe to run again: anything that already exists is skipped.
 
@@ -50,5 +51,15 @@ aws --endpoint-url "$ENDPOINT" s3 cp frontend/css/style.css s3://inventory-front
 aws --endpoint-url "$ENDPOINT" s3 cp frontend/js/config.js s3://inventory-frontend/js/config.js --content-type application/javascript
 aws --endpoint-url "$ENDPOINT" s3 cp frontend/js/app.js s3://inventory-frontend/js/app.js --content-type application/javascript
 
+echo "=== 4) SNS topic for low-stock alerts (+ SQS queue that keeps them) ==="
+awsl sns create-topic --name inventory-low-stock-topic > /dev/null \
+  && echo "  topic inventory-low-stock-topic ready"
+awsl sqs create-queue --queue-name inventory-low-stock-alerts > /dev/null \
+  && echo "  queue inventory-low-stock-alerts ready"
+awsl sns subscribe \
+  --topic-arn arn:aws:sns:us-east-1:000000000000:inventory-low-stock-topic \
+  --protocol sqs \
+  --notification-endpoint arn:aws:sqs:us-east-1:000000000000:inventory-low-stock-alerts > /dev/null \
+  && echo "  queue subscribed to the topic"
 echo "=== Done ==="
 echo "Frontend on S3: $ENDPOINT/inventory-frontend/inventory.html"

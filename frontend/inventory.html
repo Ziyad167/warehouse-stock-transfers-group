@@ -4,73 +4,106 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inventory - Warehouse Stock Transfers</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-<header class="app-header">
-    <h1>Inventory Management</h1>
-    <p>View, check and update the stock of each warehouse.</p>
-    <p id="api-status" class="api-status">Checking API...</p>
+<header class="topbar">
+    <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-name">Stock Transfers</span>
+        <span class="brand-part">Inventory</span>
+    </div>
+    <p id="api-status" class="api-status">Checking connection...</p>
     <div id="user-bar" class="user-bar" hidden>
         <span id="user-info"></span>
-        <button id="logout-button" type="button">Log Out</button>
+        <button id="logout-button" class="button-quiet" type="button">Log out</button>
     </div>
 </header>
 
-<section id="login-panel" class="panel login-panel" hidden>
-    <h2>Log In</h2>
-    <form id="login-form">
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<section id="login-panel" class="login" hidden>
+    <h1>Log in to manage stock</h1>
+    <p class="login-hint">Use the account your warehouse manager gave you.</p>
+    <form id="login-form" class="form">
         <label for="login-username">Username</label>
-        <input id="login-username" type="text" required>
+        <input id="login-username" type="text" autocomplete="username" required>
         <label for="login-password">Password</label>
-        <input id="login-password" type="password" required>
-        <button type="submit">Log In</button>
+        <input id="login-password" type="password" autocomplete="current-password" required>
+        <button class="button-primary" type="submit">Log in</button>
     </form>
+    <p id="login-feedback" class="feedback" role="alert"></p>
 </section>
 
-<main id="app" class="container" hidden>
-    <section class="panel">
-        <h2>Warehouse Stock</h2>
-        <label for="warehouse-select">Warehouse</label>
-        <select id="warehouse-select"></select>
-        <div id="stock-list"></div>
-    </section>
-
-    <section class="panel">
-        <div id="add-section">
-            <h2>Add Item to This Warehouse</h2>
-            <form id="add-form">
-                <label for="add-item">Item</label>
-                <select id="add-item" required></select>
-                <label for="add-quantity">Starting quantity</label>
-                <input id="add-quantity" type="number" min="0" required>
-                <button type="submit">Add to Warehouse</button>
-            </form>
+<main id="app" class="layout" hidden>
+    <section class="rack" aria-labelledby="warehouse-name">
+        <div class="rack-sign">
+            <div class="rack-picker">
+                <label for="warehouse-select">Warehouse</label>
+                <select id="warehouse-select"></select>
+            </div>
+            <h1 id="warehouse-name"></h1>
+            <p id="warehouse-summary" class="rack-summary"></p>
         </div>
 
-        <h2>Check Availability</h2>
-        <form id="check-form">
-            <label for="check-item">Item</label>
-            <select id="check-item" required></select>
-            <label for="check-quantity">Quantity needed</label>
-            <input id="check-quantity" type="number" min="1" required>
-            <button type="submit">Check</button>
-        </form>
-        <p id="check-result"></p>
+        <table class="stock-table">
+            <thead>
+                <tr>
+                    <th scope="col">Item</th>
+                    <th scope="col" class="col-qty">In stock</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Receive or dispatch units</th>
+                </tr>
+            </thead>
+            <tbody id="stock-rows"></tbody>
+        </table>
+        <p id="stock-empty" class="empty" hidden>
+            No items are stocked here yet. A manager can add one with "Stock a new item here".
+        </p>
     </section>
 
-    <section class="panel">
-        <h2>Search Items</h2>
-        <form id="search-form">
-            <label for="search-text">Name, SKU or category</label>
-            <input id="search-text" type="text">
-            <button type="submit">Search</button>
-        </form>
-        <ul id="items-list"></ul>
-    </section>
+    <aside class="tools">
+        <section class="tool">
+            <h2>Check stock for a transfer</h2>
+            <p class="tool-hint">Can this warehouse send the quantity you need?</p>
+            <form id="check-form" class="form">
+                <label for="check-item">Item</label>
+                <select id="check-item" required></select>
+                <label for="check-quantity">Units needed</label>
+                <input id="check-quantity" type="number" min="1" step="1" required>
+                <button class="button-secondary" type="submit">Check stock</button>
+            </form>
+            <p id="check-result" class="feedback" aria-live="polite"></p>
+        </section>
+
+        <section id="add-section" class="tool">
+            <h2>Stock a new item here</h2>
+            <p class="tool-hint">Only items this warehouse does not hold yet are listed.</p>
+            <form id="add-form" class="form">
+                <label for="add-item">Item</label>
+                <select id="add-item" required></select>
+                <label for="add-quantity">Starting units</label>
+                <input id="add-quantity" type="number" min="0" step="1" required>
+                <button id="add-button" class="button-secondary" type="submit">Add to this warehouse</button>
+            </form>
+            <p id="add-feedback" class="feedback" aria-live="polite"></p>
+        </section>
+
+        <section class="tool">
+            <h2>Find an item</h2>
+            <p class="tool-hint">Search by name, SKU or category, then see where it is stored.</p>
+            <form id="search-form" class="search">
+                <label for="search-text" class="visually-hidden">Search items</label>
+                <input id="search-text" type="search" placeholder="e.g. box, TAPE-48MM, Hardware">
+                <button class="button-secondary" type="submit">Search</button>
+            </form>
+            <ul id="items-list" class="results"></ul>
+        </section>
+    </aside>
 </main>
-
-<p id="message" aria-live="polite"></p>
 
 <!-- config.js (API URL) must load before app.js. defer keeps this order. -->
 <script src="js/config.js" defer></script>

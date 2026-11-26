@@ -27,6 +27,12 @@
         "arn:aws:s3:::inventory-frontend",
         "arn:aws:s3:::inventory-frontend/*"
       ]
+    },
+    {
+      "Sid": "LowStockTopicOnly",
+      "Effect": "Allow",
+      "Action": ["sns:Publish"],
+      "Resource": "arn:aws:sns:us-east-1:000000000000:inventory-low-stock-topic"
     }
   ]
 }
