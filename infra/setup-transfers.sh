@@ -39,8 +39,11 @@ awsl s3 mb s3://transfers-frontend > /dev/null 2>&1 \
 if [ -f frontend/transfers.html ]; then
   aws --endpoint-url "$ENDPOINT" s3 cp frontend/transfers.html s3://transfers-frontend/transfers.html --content-type text/html
   aws --endpoint-url "$ENDPOINT" s3 cp frontend/css/style.css s3://transfers-frontend/css/style.css --content-type text/css
+  aws --endpoint-url "$ENDPOINT" s3 cp frontend/css/transfers.css s3://transfers-frontend/css/transfers.css --content-type text/css
   aws --endpoint-url "$ENDPOINT" s3 cp frontend/js/config.js s3://transfers-frontend/js/config.js --content-type application/javascript
+  aws --endpoint-url "$ENDPOINT" s3 cp frontend/js/transfers-config.js s3://transfers-frontend/js/transfers-config.js --content-type application/javascript
   aws --endpoint-url "$ENDPOINT" s3 cp frontend/js/transfers.js s3://transfers-frontend/js/transfers.js --content-type application/javascript
+  echo "  Transfers page on S3: $ENDPOINT/transfers-frontend/transfers.html"
 fi
 
 echo "=== Done ==="
