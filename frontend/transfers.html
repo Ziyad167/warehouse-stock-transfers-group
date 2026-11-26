@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transfers - Warehouse Stock Transfers</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&display=swap">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/transfers.css">
+</head>
+<body>
+<header class="topbar">
+    <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-name">Stock Transfers</span>
+        <span class="brand-part">Transfer requests</span>
+    </div>
+    <a id="inventory-link" class="topbar-link" href="inventory.html">Open inventory</a>
+    <p id="api-status" class="api-status">Checking connection...</p>
+    <div id="user-bar" class="user-bar" hidden>
+        <span id="user-info"></span>
+        <button id="logout-button" class="button-quiet" type="button">Log out</button>
+    </div>
+</header>
+
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<section id="login-panel" class="login" hidden>
+    <h1>Log in to request transfers</h1>
+    <p class="login-hint">Use the same account as the inventory page.</p>
+    <form id="login-form" class="form">
+        <label for="login-username">Username</label>
+        <input id="login-username" type="text" autocomplete="username" required>
+        <label for="login-password">Password</label>
+        <input id="login-password" type="password" autocomplete="current-password" required>
+        <button class="button-primary" type="submit">Log in</button>
+    </form>
+    <p id="login-feedback" class="feedback" role="alert"></p>
+</section>
+
+<main id="app" class="layout" hidden>
+    <section class="rack" aria-labelledby="list-title">
+        <div class="rack-sign">
+            <h1 id="list-title">Transfer requests</h1>
+            <p id="list-summary" class="rack-summary"></p>
+            <form id="filter-form" class="filters">
+                <div>
+                    <label for="filter-status">Status</label>
+                    <select id="filter-status">
+                        <option value="">All</option>
+                        <option value="PENDING">Waiting for a decision</option>
+                        <option value="APPROVED">Approved</option>
+                        <option value="REJECTED">Rejected</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="filter-warehouse">Warehouse</label>
+                    <select id="filter-warehouse"></select>
+                </div>
+            </form>
+        </div>
+        <ul id="transfer-list" class="transfer-list"></ul>
+        <p id="list-empty" class="empty" hidden>No transfer requests match these filters.</p>
+    </section>
+
+    <aside class="tools">
+        <section class="tool">
+            <h2>Request a transfer</h2>
+            <p class="tool-hint">A manager approves it if the source warehouse has enough stock.</p>
+            <form id="request-form" class="form">
+                <label for="from-warehouse">From warehouse</label>
+                <select id="from-warehouse" required></select>
+                <label for="to-warehouse">To warehouse</label>
+                <select id="to-warehouse" required></select>
+                <label for="request-item">Item</label>
+                <select id="request-item" required></select>
+                <p id="stock-hint" class="stock-hint" aria-live="polite"></p>
+                <label for="request-quantity">Units to move</label>
+                <input id="request-quantity" type="number" min="1" step="1" required>
+                <label for="request-note">Note (optional)</label>
+                <input id="request-note" type="text" maxlength="200" placeholder="e.g. Alexandria shelves are almost empty">
+                <button class="button-primary" type="submit">Send request</button>
+            </form>
+            <p id="request-feedback" class="feedback" aria-live="polite"></p>
+        </section>
+    </aside>
+</main>
+
+<!-- config.js gives INVENTORY_API, transfers-config.js gives TRANSFERS_API.
+     Both must load before transfers.js. defer keeps this order. -->
+<script src="js/config.js" defer></script>
+<script src="js/transfers-config.js" defer></script>
+<script src="js/transfers.js" defer></script>
+</body>
+</html>

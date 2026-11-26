@@ -1,0 +1,231 @@
+@inventoryUrl = http://localhost:3001
+@baseUrl = http://localhost:3002
+@managerToken = {{loginManager.response.body.$.token}}
+@staffToken = {{loginStaff.response.body.$.token}}
+@transferId = {{createTransfer.response.body.$.transferId}}
+
+### ---------- LOGIN (through the Inventory service) ----------
+### Run L01 and L02 first: the other tests use their tokens.
+
+### L01 Log in as manager (expect 200 with a token)
+# @name loginManager
+POST {{inventoryUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "cloud123",
+  "password": "Cloud123456"
+}
+
+### L02 Log in as staff (expect 200 with a token)
+# @name loginStaff
+POST {{inventoryUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "staff12",
+  "password": "Staff12344"
+}
+
+### ---------- CREATE REQUESTS ----------
+
+### R00 Health check (expect 200)
+GET {{baseUrl}}/api/health
+
+### R01 Staff asks to move 10 brackets from Cairo to Alexandria (expect 201, PENDING)
+# @name createTransfer
+POST {{baseUrl}}/api/transfers
+Authorization: Bearer {{staffToken}}
+Content-Type: application/json
+
+{
+  "fromWarehouseId": "WH-101",
+  "toWarehouseId": "WH-1795391950080",
+  "itemId": "ITM-101",
+  "quantity": 10,
+  "note": "Alexandria shelves are almost empty"
+}
+
+### R02 No token (expect 401 UNAUTHORIZED)
+POST {{baseUrl}}/api/transfers
+Content-Type: application/json
+
+{
+  "fromWarehouseId": "WH-101",
+  "toWarehouseId": "WH-1795391950080",
+  "itemId": "ITM-101",
+  "quantity": 10
+}
+
+### R03 Same source and destination (expect 400 VALIDATION_ERROR)
+POST {{baseUrl}}/api/transfers
+Authorization: Bearer {{staffToken}}
+Content-Type: application/json
+
+{
+  "fromWarehouseId": "WH-101",
+  "toWarehouseId": "WH-101",
+  "itemId": "ITM-101",
+  "quantity": 10
+}
+
+### R04 Quantity 0 (expect 400 VALIDATION_ERROR)
+POST {{baseUrl}}/api/transfers
+Authorization: Bearer {{staffToken}}
+Content-Type: application/json
+
+{
+  "fromWarehouseId": "WH-101",
+  "toWarehouseId": "WH-1795391950080",
+  "itemId": "ITM-101",
+  "quantity": 0
+}
+
+### R05 Unknown destination warehouse (expect 404 WAREHOUSE_NOT_FOUND)
+POST {{baseUrl}}/api/transfers
+Authorization: Bearer {{staffToken}}
+Content-Type: application/json
+
+{
+  "fromWarehouseId": "WH-101",
+  "toWarehouseId": "WH-999",
+  "itemId": "ITM-101",
+  "quantity": 10
+}
+
+### R06 Unknown item (expect 404 ITEM_NOT_FOUND)
+POST {{baseUrl}}/api/transfers
+Authorization: Bearer {{staffToken}}
+Content-Type: application/json
+
+{
+  "fromWarehouseId": "WH-101",
+  "toWarehouseId": "WH-1795391950080",
+  "itemId": "ITM-999",
+  "quantity": 10
+}
+
+### R07 Wrong content type (expect 415)
+POST {{baseUrl}}/api/transfers
+Authorization: Bearer {{staffToken}}
+Content-Type: text/plain
+
+quantity=10
+
+### ---------- LIST AND SEARCH ----------
+
+### R10 All requests, newest first (expect 200)
+GET {{baseUrl}}/api/transfers
+Authorization: Bearer {{managerToken}}
+
+### R11 Only PENDING requests (expect 200)
+GET {{baseUrl}}/api/transfers?status=PENDING
+Authorization: Bearer {{managerToken}}
+
+### R12 Requests that involve Alexandria (expect 200)
+GET {{baseUrl}}/api/transfers?warehouseId=WH-1795391950080
+Authorization: Bearer {{managerToken}}
+
+### R13 Wrong status filter (expect 400 VALIDATION_ERROR)
+GET {{baseUrl}}/api/transfers?status=LOST
+Authorization: Bearer {{managerToken}}
+
+### R14 One request by id (expect 200)
+GET {{baseUrl}}/api/transfers/{{transferId}}
+Authorization: Bearer {{managerToken}}
+
+### R15 Unknown id (expect 404 TRANSFER_NOT_FOUND)
+GET {{baseUrl}}/api/transfers/TRF-999
+Authorization: Bearer {{managerToken}}
+
+### ---------- APPROVE OR REJECT ----------
+
+### R20 Staff tries to approve (expect 403 FORBIDDEN)
+PATCH {{baseUrl}}/api/transfers/{{transferId}}/decision
+Authorization: Bearer {{staffToken}}
+Content-Type: application/json
+
+{
+  "decision": "approve"
+}
+
+### R21 Reject without a reason (expect 400 VALIDATION_ERROR)
+PATCH {{baseUrl}}/api/transfers/{{transferId}}/decision
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "decision": "reject"
+}
+
+### R22 Manager approves; Inventory confirms the stock (expect 200, APPROVED)
+PATCH {{baseUrl}}/api/transfers/{{transferId}}/decision
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "decision": "approve"
+}
+
+### R23 Approve the same request again (expect 409 ALREADY_DECIDED)
+PATCH {{baseUrl}}/api/transfers/{{transferId}}/decision
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "decision": "approve"
+}
+
+### R24 Staff asks for 5000 brackets (expect 201, PENDING)
+# @name bigTransfer
+POST {{baseUrl}}/api/transfers
+Authorization: Bearer {{staffToken}}
+Content-Type: application/json
+
+{
+  "fromWarehouseId": "WH-101",
+  "toWarehouseId": "WH-1795391950080",
+  "itemId": "ITM-101",
+  "quantity": 5000
+}
+
+### R25 Approve 5000 but Cairo has fewer (expect 409 INSUFFICIENT_STOCK)
+PATCH {{baseUrl}}/api/transfers/{{bigTransfer.response.body.$.transferId}}/decision
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "decision": "approve"
+}
+
+### R26 Reject it with a reason (expect 200, REJECTED)
+PATCH {{baseUrl}}/api/transfers/{{bigTransfer.response.body.$.transferId}}/decision
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "decision": "reject",
+  "reason": "Not enough stock in Cairo"
+}
+
+### R27 Manager creates a request (expect 201)
+# @name managerTransfer
+POST {{baseUrl}}/api/transfers
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "fromWarehouseId": "WH-101",
+  "toWarehouseId": "WH-1795391950080",
+  "itemId": "ITM-102",
+  "quantity": 5
+}
+
+### R28 Manager tries to approve their own request (expect 403 OWN_REQUEST)
+PATCH {{baseUrl}}/api/transfers/{{managerTransfer.response.body.$.transferId}}/decision
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "decision": "approve"
+}
