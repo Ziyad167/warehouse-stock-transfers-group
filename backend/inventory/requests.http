@@ -106,8 +106,8 @@ Authorization: Bearer {{managerToken}}
 Content-Type: application/json
 
 {
-  "name": "Alexandria Warehouse",
-  "location": "Alexandria"
+  "name": "Giza Warehouse",
+  "location": "Giza"
 }
 
 ### T07 Same name as an existing warehouse, different capitals (expect 409 DUPLICATE_WAREHOUSE)
@@ -160,15 +160,16 @@ Authorization: Bearer {{managerToken}}
 GET {{baseUrl}}/api/items?search=box
 Authorization: Bearer {{managerToken}}
 
-### T12 Create a valid item (expect 201)
+### T12 Create a valid item (expect 201 the first time, 409 DUPLICATE_SKU if it already exists)
+# @name createItem
 POST {{baseUrl}}/api/items
 Authorization: Bearer {{managerToken}}
 Content-Type: application/json
 
 {
-  "name": "Packing Tape Roll",
-  "sku": "TAPE-48MM",
-  "category": "Packaging"
+  "name": "Work Gloves",
+  "sku": "GLV-PAIR-01",
+  "category": "Safety"
 }
 
 ### T13 Duplicate SKU (expect 409)
@@ -203,14 +204,14 @@ Authorization: Bearer {{managerToken}}
 GET {{baseUrl}}/api/warehouses/WH-999/inventory
 Authorization: Bearer {{managerToken}}
 
-### T22 Add tape to Cairo warehouse (expect 201)
+### T22 Add the new gloves from T12 to Cairo warehouse (expect 201; on a second run T12 creates nothing, so 404)
 POST {{baseUrl}}/api/inventory
 Authorization: Bearer {{managerToken}}
 Content-Type: application/json
 
 {
   "warehouseId": "WH-101",
-  "itemId": "ITM-1795393933622",
+  "itemId": "{{createItem.response.body.$.itemId}}",
   "quantity": 40
 }
 

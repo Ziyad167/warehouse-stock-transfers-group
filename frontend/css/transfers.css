@@ -59,19 +59,51 @@
     line-height: 1;
 }
 
-.decision {
+/* Progress bar under each request: Requested > Approved > Dispatched > Received */
+.progress {
     grid-column: 1 / -1;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    align-items: center;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.4rem;
+    margin: 0.4rem 0 0;
+    padding: 0;
+    list-style: none;
 }
-.decision input {
-    flex: 1;
-    min-width: 180px;
+.step {
+    padding: 0.4rem 0.2rem 0;
+    border-top: 4px solid var(--line);
+    font-size: 0.85rem;
+    color: var(--steel);
 }
-.decision button {
-    padding: 0.5rem 0.9rem;
+.step-name {
+    display: block;
+    font-weight: 600;
+}
+.step-detail {
+    display: block;
+    font-size: 0.78rem;
+}
+.step.done {
+    border-top-color: var(--go);
+    color: var(--slate);
+}
+.step.current {
+    border-top-color: var(--safety);
+    color: var(--slate);
+}
+.step.rejected {
+    border-top-color: var(--stop);
+    color: var(--stop);
+}
+.step.skipped {
+    opacity: 0.4;
+}
+
+/* What happens next, with a link to the page where it happens */
+.transfer-next {
+    grid-column: 1 / -1;
+    margin: 0.2rem 0 0;
+    font-size: 0.92rem;
 }
 
 /* Status labels: grey = waiting, green = approved, red = rejected */
@@ -95,11 +127,121 @@
 }
 
 @media (max-width: 640px) {
+    .progress {
+        grid-template-columns: repeat(2, 1fr);
+    }
     .transfer {
         grid-template-columns: 1fr;
         padding: 1rem;
     }
     .transfer-side {
         text-align: left;
+    }
+}
+
+/* ---------- Approvals page (managers only) ---------- */
+
+/* Waiting requests (left) | recent decisions (right) */
+.approvals-layout {
+    grid-template-columns: minmax(0, 1.45fr) minmax(320px, 1fr);
+    gap: 1.75rem;
+}
+
+.approval-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.approval {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.5rem 1.5rem;
+    padding: 1.1rem 1.75rem;
+    border-bottom: 1px solid var(--concrete);
+}
+.approval-route {
+    margin: 0;
+    font-family: var(--sign-font);
+    font-size: 1.45rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+.approval-what {
+    margin: 0.15rem 0 0;
+}
+.approval-meta {
+    margin: 0.25rem 0 0;
+    font-size: 0.9rem;
+    color: var(--steel);
+}
+.approval-stock {
+    margin: 0.35rem 0 0;
+    font-size: 0.9rem;
+    color: var(--go);
+}
+.approval-stock.bad {
+    color: var(--stop);
+    font-weight: 600;
+}
+.approval-qty {
+    margin: 0;
+    font-family: var(--sign-font);
+    font-size: 2rem;
+    font-weight: 600;
+    line-height: 1;
+    text-align: right;
+}
+.approval-actions {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.approval-actions input {
+    flex: 1;
+    min-width: 180px;
+}
+.approval-actions button {
+    padding: 0.5rem 0.9rem;
+}
+
+/* Recent decisions in the right card */
+.decision-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.decision-item {
+    padding: 0.7rem 0 0.7rem 0.8rem;
+    border-bottom: 1px solid var(--concrete);
+    border-left: 4px solid var(--go);
+}
+.decision-item.decision-rejected {
+    border-left-color: var(--stop);
+}
+.decision-verb {
+    margin: 0;
+    font-weight: 600;
+}
+.decision-what,
+.decision-when {
+    margin: 0.1rem 0 0;
+    font-size: 0.88rem;
+    color: var(--steel);
+}
+
+/* Staff opening the Approvals page see a short message and this button */
+.manager-only-link {
+    display: block;
+    padding: 0.6rem 1rem;
+    border-radius: 4px;
+    font-weight: 600;
+    text-align: center;
+    text-decoration: none;
+}
+
+@media (max-width: 760px) {
+    .approvals-layout {
+        grid-template-columns: 1fr;
     }
 }

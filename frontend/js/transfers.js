@@ -1,5 +1,6 @@
 // INVENTORY_API comes from js/config.js, TRANSFERS_API from js/transfers-config.js,
-// and pageUrl, chosenRole and hidePasswords from js/common.js.
+// and pageUrl, setupNavForUser, refreshApprovalCount, chosenRole, roleLabel, resetLoginSteps
+// and hidePasswords from js/common.js.
 
 // ---------- Page elements ----------
 const apiStatus = document.querySelector('#api-status');
@@ -109,6 +110,13 @@ function itemName(itemId) {
 
 function formatDate(isoText) {
   return new Date(isoText).toLocaleString();
+}
+
+// "27 Nov, 20:40": short enough for the progress bar
+function shortDate(isoText) {
+  return new Date(isoText).toLocaleString([], {
+    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+  });
 }
 
 // ---------- Warehouses and items (from the Inventory service) ----------
@@ -224,110 +232,122 @@ function renderTransfers(transfers) {
     const row = document.createElement('li');
     row.className = 'transfer';
 
-    // Left side: route, item, who and when
+    // Left side: route, item and note
     const main = document.createElement('div');
-    const route = document.createElement('p');
-    route.className = 'transfer-route';
-    route.textContent = `${warehouseName(transfer.fromWarehouseId)} to ${warehouseName(transfer.toWarehouseId)}`;
-    const what = document.createElement('p');
-    what.className = 'transfer-what';
-    what.textContent = itemName(transfer.itemId);
-    const meta = document.createElement('p');
-    meta.className = 'transfer-meta';
-    meta.textContent = `Requested by ${transfer.requestedBy} on ${formatDate(transfer.requestedAt)}`;
-    main.append(route, what, meta);
-
-    // Link to the Inventory page, opened at the source warehouse
-    const stockLink = document.createElement('a');
-    stockLink.className = 'row-link';
-    stockLink.href = pageUrl('inventory', { warehouse: transfer.fromWarehouseId });
-    stockLink.textContent = `See stock in ${warehouseName(transfer.fromWarehouseId)}`;
-
+    main.append(
+      makeText('transfer-route', `${warehouseName(transfer.fromWarehouseId)} to ${warehouseName(transfer.toWarehouseId)}`),
+      makeText('transfer-what', itemName(transfer.itemId))
+    );
     if (transfer.note) {
-      const note = document.createElement('p');
-      note.className = 'transfer-note';
-      note.textContent = `Note: ${transfer.note}`;
-      main.append(note);
+      main.append(makeText('transfer-note', `Note: ${transfer.note}`));
     }
-    if (transfer.status !== 'PENDING') {
-      const decided = document.createElement('p');
-      decided.className = 'transfer-meta';
-      const verb = transfer.status === 'APPROVED' ? 'Approved' : 'Rejected';
-      const reason = transfer.decisionReason ? `: ${transfer.decisionReason}` : '';
-      decided.textContent = `${verb} by ${transfer.decidedBy} on ${formatDate(transfer.decidedAt)}${reason}`;
-      main.append(decided);
-    }
-
-    main.append(stockLink);
 
     // Right side: units and status label
     const side = document.createElement('div');
     side.className = 'transfer-side';
-    const qty = document.createElement('p');
-    qty.className = 'transfer-qty';
-    qty.textContent = transfer.quantity;
     const badge = document.createElement('span');
-    const labels = { PENDING: 'Waiting', APPROVED: 'Approved', REJECTED: 'Rejected' };
+    const labels = {
+      PENDING: 'Waiting', APPROVED: 'Approved', REJECTED: 'Rejected',
+      DISPATCHED: 'On the way', RECEIVED: 'Received'
+    };
     badge.className = `status ${transfer.status.toLowerCase()}`;
     badge.textContent = labels[transfer.status];
-    side.append(qty, badge);
+    side.append(makeText('transfer-qty', transfer.quantity), badge);
 
-    row.append(main, side);
-
-    // Managers can decide requests that are waiting, except their own
-    if (currentUser.role === 'manager' && transfer.status === 'PENDING' &&
-        transfer.requestedBy !== currentUser.username) {
-      row.append(buildDecision(transfer));
-    }
-
+    // Under both: the progress bar and what happens next
+    row.append(main, side, buildProgress(transfer), buildNextStep(transfer));
     transferList.append(row);
   });
 }
 
-// Approve button, reason box and Reject button for one request
-function buildDecision(transfer) {
-  const box = document.createElement('div');
-  box.className = 'decision';
-
-  const approve = document.createElement('button');
-  approve.type = 'button';
-  approve.className = 'button-primary';
-  approve.textContent = 'Approve';
-  approve.addEventListener('click', () => decide(transfer, 'approve', ''));
-
-  const reason = document.createElement('input');
-  reason.type = 'text';
-  reason.maxLength = 200;
-  reason.placeholder = 'Reason for rejecting';
-  reason.setAttribute('aria-label', 'Reason for rejecting');
-
-  const reject = document.createElement('button');
-  reject.type = 'button';
-  reject.className = 'button-secondary';
-  reject.textContent = 'Reject';
-  reject.addEventListener('click', () => decide(transfer, 'reject', reason.value));
-
-  box.append(approve, reason, reject);
-  return box;
+// Makes a <p> with a class and a text
+function makeText(className, text) {
+  const paragraph = document.createElement('p');
+  paragraph.className = className;
+  paragraph.textContent = text;
+  return paragraph;
 }
 
-// PATCH /api/transfers/:id/decision -> approve or reject
-async function decide(transfer, decision, reason) {
-  try {
-    const body = decision === 'reject' ? { decision, reason } : { decision };
-    await apiRequest(`${TRANSFERS_API}/api/transfers/${transfer.transferId}/decision`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body)
-    });
-    await loadTransfers();
-    await showStockHint();
-    const done = decision === 'approve' ? 'Approved' : 'Rejected';
-    showToast(`${done}: ${transfer.quantity} units from ${warehouseName(transfer.fromWarehouseId)}.`, 'good');
-  } catch (error) {
-    console.error(error);
-    showToast(`Not ${decision === 'approve' ? 'approved' : 'rejected'}: ${error.message}`, 'bad');
+// The four steps of every transfer, in order, and where each one is saved
+const STEPS = [
+  { label: 'Requested', by: 'requestedBy', at: 'requestedAt' },
+  { label: 'Approved', by: 'decidedBy', at: 'decidedAt' },
+  { label: 'Dispatched', by: 'dispatchedBy', at: 'dispatchedAt' },
+  { label: 'Received', by: 'receivedBy', at: 'receivedAt' }
+];
+
+// Requested > Approved > Dispatched > Received, with who did each step and when.
+// Done steps are green, the next step is yellow, a rejected request stops at "Rejected".
+function buildProgress(transfer) {
+  const list = document.createElement('ol');
+  list.className = 'progress';
+  const rejected = transfer.status === 'REJECTED';
+  let nextMarked = false;
+
+  STEPS.forEach((step, index) => {
+    const item = document.createElement('li');
+    const done = Boolean(transfer[step.at]);
+    let label = step.label;
+
+    if (rejected && index === 1) {
+      label = 'Rejected';
+      item.className = 'step rejected';
+    } else if (rejected && index > 1) {
+      item.className = 'step skipped';
+    } else if (done) {
+      item.className = 'step done';
+    } else if (!nextMarked) {
+      item.className = 'step current';
+      nextMarked = true;
+    } else {
+      item.className = 'step';
+    }
+
+    const name = document.createElement('span');
+    name.className = 'step-name';
+    name.textContent = label;
+    const detail = document.createElement('span');
+    detail.className = 'step-detail';
+    detail.textContent = done ? `${transfer[step.by]}, ${shortDate(transfer[step.at])}` : '';
+    item.append(name, detail);
+    list.append(item);
+  });
+  return list;
+}
+
+// One line under the progress bar: what happens next, and a link to the page where it happens
+function buildNextStep(transfer) {
+  const line = document.createElement('p');
+  line.className = 'transfer-next';
+
+  const link = (page, text, params) => {
+    const anchor = document.createElement('a');
+    anchor.className = 'row-link';
+    anchor.href = pageUrl(page, params);
+    anchor.textContent = text;
+    return anchor;
+  };
+
+  if (transfer.status === 'PENDING') {
+    if (currentUser.role === 'manager') {
+      line.append('Next: a manager approves or rejects it. ', link('approvals', 'Open Approvals'));
+    } else {
+      line.append('Next: a manager approves or rejects it on the Approvals page.');
+    }
+  } else if (transfer.status === 'APPROVED') {
+    line.append('Next: dispatch it from the source warehouse. ', link('tracking', 'Open Tracking'));
+  } else if (transfer.status === 'DISPATCHED') {
+    line.append('Next: confirm what arrived at the destination. ', link('tracking', 'Open Tracking'));
+  } else if (transfer.status === 'RECEIVED') {
+    const missing = transfer.missingQuantity > 0
+      ? ` ${transfer.missingQuantity} missing: ${transfer.receiptNote}.`
+      : '';
+    line.append(`Done: ${transfer.receivedQuantity} of ${transfer.dispatchedQuantity} arrived.${missing} `,
+      link('tracking', 'See movement history', { item: transfer.itemId }));
+  } else if (transfer.status === 'REJECTED') {
+    line.append(`Stopped: ${transfer.decisionReason || 'rejected by a manager'}.`);
   }
+  return line;
 }
 
 // POST /api/transfers -> send a new request
@@ -352,10 +372,11 @@ requestForm.addEventListener('submit', async (event) => {
     });
     requestQuantity.value = '';
     requestNote.value = '';
-    const text = `Request sent: ${payload.quantity} units to ${warehouseName(payload.toWarehouseId)}. A manager will decide.`;
+    const text = `Request sent: ${payload.quantity} units to ${warehouseName(payload.toWarehouseId)}. A manager will decide on the Approvals page.`;
     setFeedback(requestFeedback, text, 'good');
     showToast(text, 'good');
     await loadTransfers();
+    await refreshApprovalCount();
   } catch (error) {
     console.error(error);
     setFeedback(requestFeedback, `Not sent: ${error.message}`, 'bad');
@@ -391,6 +412,7 @@ function showLogin(text) {
   userBar.hidden = true;
   mainNav.hidden = true;
   loginPanel.hidden = false;
+  resetLoginSteps();
   setFeedback(loginFeedback, text || '', text ? 'bad' : '');
 }
 
@@ -400,8 +422,9 @@ async function showApp(user) {
   appSection.hidden = false;
   userBar.hidden = false;
   mainNav.hidden = false;
-  userInfo.textContent = `${user.username}, ${user.role}`;
+  userInfo.textContent = roleLabel(user.role);
   setFeedback(requestFeedback, '');
+  await setupNavForUser(user);
   await loadChoices();
   await loadTransfers();
 }
