@@ -1,5 +1,7 @@
 const authService = require('../services/authService');
 
+const ROLES = ['manager', 'staff'];
+
 function sendError(res, status, code, message) {
   return res.status(status).json({ error: { code, message } });
 }
@@ -12,10 +14,14 @@ async function login(req, res, next) {
         'Content-Type must be application/json.');
     }
 
-    const { username, password } = req.body;
+    const { username, password, role } = req.body;
     if (typeof username !== 'string' || typeof password !== 'string' ||
         username.trim() === '' || password === '') {
       return sendError(res, 400, 'VALIDATION_ERROR', 'Username and password are required.');
+    }
+    // role is optional: the login page sends the role the user chose
+    if (role !== undefined && !ROLES.includes(role)) {
+      return sendError(res, 400, 'VALIDATION_ERROR', 'Role must be manager or staff.');
     }
 
     const user = await authService.checkLogin(username.trim(), password);
@@ -23,6 +29,12 @@ async function login(req, res, next) {
       // Same message for a wrong username or a wrong password,
       // so nobody can find out which usernames exist
       return sendError(res, 401, 'INVALID_LOGIN', 'Wrong username or password.');
+    }
+
+    // The chosen role must match the account; checked before any session is created
+    if (role !== undefined && role !== user.role) {
+      return sendError(res, 403, 'WRONG_ROLE',
+        `This is a ${user.role} account. Choose ${user.role} to log in.`);
     }
 
     const token = await authService.createSession(user.username);

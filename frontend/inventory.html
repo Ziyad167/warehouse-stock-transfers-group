@@ -16,6 +16,10 @@
         <span class="brand-name">Stock Transfers</span>
         <span class="brand-part">Inventory</span>
     </div>
+    <nav id="main-nav" class="main-nav" aria-label="Pages" hidden>
+        <a data-page="inventory" href="inventory.html" aria-current="page">Inventory</a>
+        <a data-page="transfers" href="transfers.html">Transfers</a>
+    </nav>
     <p id="api-status" class="api-status">Checking connection...</p>
     <div id="user-bar" class="user-bar" hidden>
         <span id="user-info"></span>
@@ -29,10 +33,32 @@
     <h1>Log in to manage stock</h1>
     <p class="login-hint">Use the account your warehouse manager gave you.</p>
     <form id="login-form" class="form">
+        <fieldset class="role-choice">
+            <legend>Log in as</legend>
+            <div class="role-options">
+                <label class="role-option">
+                    <input type="radio" name="login-role" value="manager" required>
+                    <span class="role-card">
+                        <span class="role-title">Manager</span>
+                        <span class="role-desc">Approve transfers, add items</span>
+                    </span>
+                </label>
+                <label class="role-option">
+                    <input type="radio" name="login-role" value="staff" required>
+                    <span class="role-card">
+                        <span class="role-title">Staff</span>
+                        <span class="role-desc">Move stock, request transfers</span>
+                    </span>
+                </label>
+            </div>
+        </fieldset>
         <label for="login-username">Username</label>
         <input id="login-username" type="text" autocomplete="username" required>
         <label for="login-password">Password</label>
-        <input id="login-password" type="password" autocomplete="current-password" required>
+        <div class="password-field">
+            <input id="login-password" type="password" autocomplete="current-password" required>
+            <button class="password-toggle" type="button" aria-label="Show password" aria-pressed="false">Show</button>
+        </div>
         <button class="button-primary" type="submit">Log in</button>
     </form>
     <p id="login-feedback" class="feedback" role="alert"></p>
@@ -52,10 +78,10 @@
         <table class="stock-table">
             <thead>
                 <tr>
+                    <th scope="col">Receive or dispatch units</th>
                     <th scope="col">Item</th>
                     <th scope="col" class="col-qty">In stock</th>
                     <th scope="col">Status</th>
-                    <th scope="col">Receive or dispatch units</th>
                 </tr>
             </thead>
             <tbody id="stock-rows"></tbody>
@@ -105,8 +131,10 @@
     </aside>
 </main>
 
-<!-- config.js (API URL) must load before app.js. defer keeps this order. -->
+<!-- config.js (API URL) and common.js (shared helpers) must load before app.js.
+     defer keeps this order. -->
 <script src="js/config.js" defer></script>
+<script src="js/common.js" defer></script>
 <script src="js/app.js" defer></script>
 </body>
 </html>

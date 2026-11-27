@@ -71,6 +71,26 @@ Authorization: Bearer {{staffToken}}
 GET {{baseUrl}}/api/warehouses
 Authorization: Bearer {{staffToken}}
 
+### A11 Correct username and password but the wrong role (expect 403 WRONG_ROLE)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "staff12",
+  "password": "Staff12344",
+  "role": "manager"
+}
+
+### A12 Role that does not exist (expect 400 VALIDATION_ERROR)
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "staff12",
+  "password": "Staff12344",
+  "role": "boss"
+}
+
 ### ---------- WAREHOUSES ----------
 
 ### T00 Health check

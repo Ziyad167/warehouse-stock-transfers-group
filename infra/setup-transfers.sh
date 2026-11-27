@@ -42,6 +42,7 @@ if [ -f frontend/transfers.html ]; then
   aws --endpoint-url "$ENDPOINT" s3 cp frontend/css/transfers.css s3://transfers-frontend/css/transfers.css --content-type text/css
   aws --endpoint-url "$ENDPOINT" s3 cp frontend/js/config.js s3://transfers-frontend/js/config.js --content-type application/javascript
   aws --endpoint-url "$ENDPOINT" s3 cp frontend/js/transfers-config.js s3://transfers-frontend/js/transfers-config.js --content-type application/javascript
+  aws --endpoint-url "$ENDPOINT" s3 cp frontend/js/common.js s3://transfers-frontend/js/common.js --content-type application/javascript
   aws --endpoint-url "$ENDPOINT" s3 cp frontend/js/transfers.js s3://transfers-frontend/js/transfers.js --content-type application/javascript
   echo "  Transfers page on S3: $ENDPOINT/transfers-frontend/transfers.html"
 fi

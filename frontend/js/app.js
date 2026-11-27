@@ -1,4 +1,5 @@
-// INVENTORY_API and LOW_STOCK_LIMIT come from js/config.js (loaded first).
+// INVENTORY_API and LOW_STOCK_LIMIT come from js/config.js, and pageUrl, chosenRole
+// and hidePasswords from js/common.js (both loaded first).
 
 // ---------- Page elements ----------
 const apiStatus = document.querySelector('#api-status');
@@ -12,6 +13,7 @@ const appSection = document.querySelector('#app');
 const userBar = document.querySelector('#user-bar');
 const userInfo = document.querySelector('#user-info');
 const logoutButton = document.querySelector('#logout-button');
+const mainNav = document.querySelector('#main-nav');
 const warehouseSelect = document.querySelector('#warehouse-select');
 const warehouseName = document.querySelector('#warehouse-name');
 const warehouseSummary = document.querySelector('#warehouse-summary');
@@ -124,6 +126,12 @@ async function loadWarehouses() {
       value: warehouse.warehouseId,
       label: `${warehouse.name} (${warehouse.location})`
     })));
+
+    // Coming from the Transfers page with ?warehouse=WH-101 opens that warehouse
+    const wanted = new URLSearchParams(window.location.search).get('warehouse');
+    if (wanted && warehouses.some((warehouse) => warehouse.warehouseId === wanted)) {
+      warehouseSelect.value = wanted;
+    }
     await loadStock();
   } catch (error) {
     console.error(error);
@@ -179,7 +187,12 @@ function renderStock(stock) {
     const sku = document.createElement('span');
     sku.className = 'item-sku';
     sku.textContent = record.sku;
-    itemCell.append(name, sku);
+    // Link to the Transfers page, with this warehouse and item already chosen
+    const transferLink = document.createElement('a');
+    transferLink.className = 'row-link';
+    transferLink.href = pageUrl('transfers', { from: warehouseSelect.value, item: record.itemId });
+    transferLink.textContent = 'Request a transfer';
+    itemCell.append(name, sku, transferLink);
 
     // Quantity in big numbers
     const qtyCell = document.createElement('td');
@@ -217,7 +230,8 @@ function renderStock(stock) {
     move.append(units, receive, dispatch);
     moveCell.append(move);
 
-    row.append(itemCell, qtyCell, statusCell, moveCell);
+    // Receive / Dispatch first, on the left of each row
+    row.append(moveCell, itemCell, qtyCell, statusCell);
     stockRows.append(row);
   });
 }
@@ -467,6 +481,7 @@ function clearLogin() {
 function showLogin(text) {
   appSection.hidden = true;
   userBar.hidden = true;
+  mainNav.hidden = true;
   loginPanel.hidden = false;
   setFeedback(loginFeedback, text || '', text ? 'bad' : '');
 }
@@ -476,6 +491,7 @@ async function showApp(user) {
   loginPanel.hidden = true;
   appSection.hidden = false;
   userBar.hidden = false;
+  mainNav.hidden = false;
   userInfo.textContent = `${user.username}, ${user.role}`;
   addSection.hidden = user.role !== 'manager';
 
@@ -488,18 +504,26 @@ async function showApp(user) {
 loginForm.addEventListener('submit', async (event) => {
   event.preventDefault();
 
+  const role = chosenRole();
+  if (!role) {
+    setFeedback(loginFeedback, 'Choose Manager or Staff first.', 'bad');
+    return;
+  }
+
   try {
     const user = await apiRequest(`${INVENTORY_API}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         username: loginUsername.value.trim(),
-        password: loginPassword.value
+        password: loginPassword.value,
+        role
       })
     });
     authToken = user.token;
     localStorage.setItem('authToken', authToken);
     loginForm.reset();
+    hidePasswords();
     setFeedback(loginFeedback, '');
     await showApp(user);
   } catch (error) {
