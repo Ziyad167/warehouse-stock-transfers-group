@@ -16,6 +16,11 @@
         <span class="brand-name">Stock Transfers</span>
         <span class="brand-part">Inventory</span>
     </div>
+    <nav id="main-nav" class="main-nav" aria-label="Pages" hidden>
+        <a data-page="inventory" href="inventory.html" aria-current="page">Inventory</a>
+        <a data-page="transfers" href="transfers.html">Transfers</a>
+        <a data-page="tracking" href="tracking.html">Tracking</a>
+    </nav>
     <p id="api-status" class="api-status">Checking connection...</p>
     <div id="user-bar" class="user-bar" hidden>
         <span id="user-info"></span>
@@ -26,27 +31,64 @@
 <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
 
 <section id="login-panel" class="login" hidden>
-    <h1>Log in to manage stock</h1>
-    <p class="login-hint">Use the account your warehouse manager gave you.</p>
-    <form id="login-form" class="form">
-        <label for="login-username">Username</label>
-        <input id="login-username" type="text" autocomplete="username" required>
-        <label for="login-password">Password</label>
-        <input id="login-password" type="password" autocomplete="current-password" required>
-        <button class="button-primary" type="submit">Log in</button>
-    </form>
+    <div id="role-step">
+        <h1>Who is logging in?</h1>
+        <p class="login-hint">Choose your role, then enter the account your manager gave you.</p>
+        <div class="role-options" role="radiogroup" aria-label="Role">
+            <button class="role-card" type="button" role="radio" aria-checked="false" data-role="manager">
+                <span class="role-check"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span>
+                <span class="role-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6a1 1 0 0 1 1 1v2H8V4a1 1 0 0 1 1-1z"/><path d="M8 5H6a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><path d="m9 14 2 2 4-4"/></svg></span>
+                <span class="role-title">Manager</span>
+                <span class="role-desc">Runs the warehouses</span>
+                <span class="role-perms">
+                    <span>Approve or reject transfers</span>
+                    <span>Add warehouses and items</span>
+                    <span>Receive and dispatch stock</span>
+                </span>
+            </button>
+            <button class="role-card" type="button" role="radio" aria-checked="false" data-role="staff">
+                <span class="role-check"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span>
+                <span class="role-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5"/><path d="M12 13v8"/></svg></span>
+                <span class="role-title">Staff</span>
+                <span class="role-desc">Works on the warehouse floor</span>
+                <span class="role-perms">
+                    <span>Receive and dispatch stock</span>
+                    <span>Request transfers</span>
+                    <span>Check stock levels</span>
+                </span>
+            </button>
+        </div>
+        <button id="role-continue" class="button-primary role-continue" type="button" disabled>Continue</button>
+    </div>
+
+    <div id="credentials-step" hidden>
+        <button id="change-role" class="change-role" type="button">Change role</button>
+        <h1 id="login-title">Log in</h1>
+        <form id="login-form" class="form">
+            <label for="login-username">Username</label>
+            <input id="login-username" type="text" autocomplete="username" required>
+            <label for="login-password">Password</label>
+            <div class="password-field">
+                <input id="login-password" type="password" autocomplete="current-password" required>
+                <button class="password-toggle" type="button" aria-label="Show password" aria-pressed="false">
+                    <svg class="icon-eye" viewBox="0 0 24 24" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+                    <svg class="icon-eye-off" viewBox="0 0 24 24" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 19c-7 0-11-7-11-7a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 7 11 7a18.5 18.5 0 0 1-2.16 3.19M14.12 14.12a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                </button>
+            </div>
+            <button class="button-primary" type="submit">Log in</button>
+        </form>
+    </div>
     <p id="login-feedback" class="feedback" role="alert"></p>
 </section>
 
-<main id="app" class="layout" hidden>
+<main id="app" class="layout inventory-layout" hidden>
     <section class="rack" aria-labelledby="warehouse-name">
         <div class="rack-sign">
-            <div class="rack-picker">
-                <label for="warehouse-select">Warehouse</label>
-                <select id="warehouse-select"></select>
-            </div>
+            <nav class="warehouse-switch" aria-label="Choose a warehouse">
+                <ul id="warehouse-list" class="warehouse-list"></ul>
+            </nav>
             <h1 id="warehouse-name"></h1>
-            <p id="warehouse-summary" class="rack-summary"></p>
+            <div id="warehouse-summary" class="rack-summary"></div>
         </div>
 
         <table class="stock-table">
@@ -66,7 +108,7 @@
     </section>
 
     <aside class="tools">
-        <section class="tool">
+        <section class="tool tool-primary">
             <h2>Check stock for a transfer</h2>
             <p class="tool-hint">Can this warehouse send the quantity you need?</p>
             <form id="check-form" class="form">
@@ -105,8 +147,10 @@
     </aside>
 </main>
 
-<!-- config.js (API URL) must load before app.js. defer keeps this order. -->
+<!-- config.js (API URL) and common.js (shared helpers) must load before app.js.
+     defer keeps this order. -->
 <script src="js/config.js" defer></script>
+<script src="js/common.js" defer></script>
 <script src="js/app.js" defer></script>
 </body>
 </html>

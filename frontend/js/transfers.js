@@ -1,9 +1,9 @@
-// INVENTORY_API comes from js/config.js and TRANSFERS_API from js/transfers-config.js.
+// INVENTORY_API comes from js/config.js, TRANSFERS_API from js/transfers-config.js,
+// and pageUrl, chosenRole and hidePasswords from js/common.js.
 
 // ---------- Page elements ----------
 const apiStatus = document.querySelector('#api-status');
 const toast = document.querySelector('#toast');
-const inventoryLink = document.querySelector('#inventory-link');
 const loginPanel = document.querySelector('#login-panel');
 const loginForm = document.querySelector('#login-form');
 const loginUsername = document.querySelector('#login-username');
@@ -13,6 +13,7 @@ const appSection = document.querySelector('#app');
 const userBar = document.querySelector('#user-bar');
 const userInfo = document.querySelector('#user-info');
 const logoutButton = document.querySelector('#logout-button');
+const mainNav = document.querySelector('#main-nav');
 const listSummary = document.querySelector('#list-summary');
 const filterStatus = document.querySelector('#filter-status');
 const filterWarehouse = document.querySelector('#filter-warehouse');
@@ -110,11 +111,6 @@ function formatDate(isoText) {
   return new Date(isoText).toLocaleString();
 }
 
-// On S3 the two pages are in different buckets, so the link needs the full path
-if (window.location.pathname.includes('/transfers-frontend/')) {
-  inventoryLink.href = '/inventory-frontend/inventory.html';
-}
-
 // ---------- Warehouses and items (from the Inventory service) ----------
 
 // GET /api/warehouses and GET /api/items -> fill the form and the filter
@@ -134,10 +130,32 @@ async function loadChoices() {
     }
     fillSelect(filterWarehouse, [{ value: '', label: 'All warehouses' }, ...warehouseEntries]);
     fillSelect(requestItem, items.map((item) => ({ value: item.itemId, label: itemLabelText(item) })));
+    prefillFromLink();
     await showStockHint();
   } catch (error) {
     console.error(error);
     showToast(`Could not load warehouses and items: ${error.message}`, 'bad');
+  }
+}
+
+// Coming from the Inventory page with ?from=WH-101&item=ITM-101 fills the form
+function prefillFromLink() {
+  const params = new URLSearchParams(window.location.search);
+  const from = params.get('from');
+  const item = params.get('item');
+  if (from && warehouses.some((warehouse) => warehouse.warehouseId === from)) {
+    fromWarehouse.value = from;
+    // Pick a different destination than the source
+    const other = warehouses.find((warehouse) => warehouse.warehouseId !== from);
+    if (other) {
+      toWarehouse.value = other.warehouseId;
+    }
+  }
+  if (item && items.some((one) => one.itemId === item)) {
+    requestItem.value = item;
+  }
+  if (from || item) {
+    requestQuantity.focus();
   }
 }
 
@@ -199,7 +217,8 @@ function renderTransfers(transfers) {
   listEmpty.hidden = transfers.length > 0;
 
   const waiting = transfers.filter((one) => one.status === 'PENDING').length;
-  listSummary.textContent = `${transfers.length} requests shown, ${waiting} waiting for a decision.`;
+  const word = transfers.length === 1 ? 'request' : 'requests';
+  listSummary.textContent = `${transfers.length} ${word} shown, ${waiting} waiting for a decision.`;
 
   transfers.forEach((transfer) => {
     const row = document.createElement('li');
@@ -218,6 +237,12 @@ function renderTransfers(transfers) {
     meta.textContent = `Requested by ${transfer.requestedBy} on ${formatDate(transfer.requestedAt)}`;
     main.append(route, what, meta);
 
+    // Link to the Inventory page, opened at the source warehouse
+    const stockLink = document.createElement('a');
+    stockLink.className = 'row-link';
+    stockLink.href = pageUrl('inventory', { warehouse: transfer.fromWarehouseId });
+    stockLink.textContent = `See stock in ${warehouseName(transfer.fromWarehouseId)}`;
+
     if (transfer.note) {
       const note = document.createElement('p');
       note.className = 'transfer-note';
@@ -232,6 +257,8 @@ function renderTransfers(transfers) {
       decided.textContent = `${verb} by ${transfer.decidedBy} on ${formatDate(transfer.decidedAt)}${reason}`;
       main.append(decided);
     }
+
+    main.append(stockLink);
 
     // Right side: units and status label
     const side = document.createElement('div');
@@ -362,6 +389,7 @@ function clearLogin() {
 function showLogin(text) {
   appSection.hidden = true;
   userBar.hidden = true;
+  mainNav.hidden = true;
   loginPanel.hidden = false;
   setFeedback(loginFeedback, text || '', text ? 'bad' : '');
 }
@@ -371,6 +399,7 @@ async function showApp(user) {
   loginPanel.hidden = true;
   appSection.hidden = false;
   userBar.hidden = false;
+  mainNav.hidden = false;
   userInfo.textContent = `${user.username}, ${user.role}`;
   setFeedback(requestFeedback, '');
   await loadChoices();
@@ -380,18 +409,27 @@ async function showApp(user) {
 // POST /api/auth/login on the Inventory service -> save the token, then show the app
 loginForm.addEventListener('submit', async (event) => {
   event.preventDefault();
+
+  const role = chosenRole();
+  if (!role) {
+    setFeedback(loginFeedback, 'Choose Manager or Staff first.', 'bad');
+    return;
+  }
+
   try {
     const user = await apiRequest(`${INVENTORY_API}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         username: loginUsername.value.trim(),
-        password: loginPassword.value
+        password: loginPassword.value,
+        role
       })
     });
     authToken = user.token;
     localStorage.setItem('authToken', authToken);
     loginForm.reset();
+    hidePasswords();
     setFeedback(loginFeedback, '');
     await showApp(user);
   } catch (error) {

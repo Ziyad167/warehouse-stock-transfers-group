@@ -1,4 +1,5 @@
 const warehouseService = require('../services/warehouseService');
+
 // Sends an error in the same shape everywhere: { error: { code, message } }
 function sendError(res, status, code, message) {
   return res.status(status).json({ error: { code, message } });
@@ -32,7 +33,7 @@ async function listWarehouses(req, res, next) {
   }
 }
 
-
+// POST /api/warehouses -> 201 with the new warehouse, or 400 / 409 / 415
 async function createWarehouse(req, res, next) {
   try {
     if (!req.is('application/json')) {
@@ -47,6 +48,12 @@ async function createWarehouse(req, res, next) {
       return sendError(res, 400, 'VALIDATION_ERROR', problem);
     }
 
+    // Business rule: two warehouses cannot have the same name
+    if (await warehouseService.findWarehouseByName(name)) {
+      return sendError(res, 409, 'DUPLICATE_WAREHOUSE',
+        `A warehouse named "${name.trim()}" already exists.`);
+    }
+
     const warehouse = await warehouseService.createWarehouse({ name, location });
     res.status(201).json(warehouse);
   } catch (error) {
@@ -57,13 +64,4 @@ async function createWarehouse(req, res, next) {
 module.exports = {
   listWarehouses,
   createWarehouse
-};
-exports = {
-  listWarehouses,
-  createWarehouse,
-
-};xports = {
-  listWarehouses,
-  createWarehouse,
-
 };
