@@ -100,7 +100,7 @@ GET {{baseUrl}}/api/health
 GET {{baseUrl}}/api/warehouses
 Authorization: Bearer {{managerToken}}
 
-### T02 Create a valid warehouse (expect 201)
+### T02 Create a valid warehouse (expect 201 the first time, 409 DUPLICATE_WAREHOUSE if it already exists)
 POST {{baseUrl}}/api/warehouses
 Authorization: Bearer {{managerToken}}
 Content-Type: application/json
@@ -108,6 +108,16 @@ Content-Type: application/json
 {
   "name": "Alexandria Warehouse",
   "location": "Alexandria"
+}
+
+### T07 Same name as an existing warehouse, different capitals (expect 409 DUPLICATE_WAREHOUSE)
+POST {{baseUrl}}/api/warehouses
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "name": "cairo main warehouse",
+  "location": "Cairo"
 }
 
 ### T03 Missing name (expect 400 VALIDATION_ERROR)

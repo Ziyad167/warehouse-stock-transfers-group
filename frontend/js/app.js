@@ -1,5 +1,5 @@
-// INVENTORY_API and LOW_STOCK_LIMIT come from js/config.js, and pageUrl, chosenRole
-// and hidePasswords from js/common.js (both loaded first).
+// INVENTORY_API and LOW_STOCK_LIMIT come from js/config.js, and pageUrl, chosenRole,
+// roleLabel, resetLoginSteps and hidePasswords from js/common.js (both loaded first).
 
 // ---------- Page elements ----------
 const apiStatus = document.querySelector('#api-status');
@@ -14,7 +14,7 @@ const userBar = document.querySelector('#user-bar');
 const userInfo = document.querySelector('#user-info');
 const logoutButton = document.querySelector('#logout-button');
 const mainNav = document.querySelector('#main-nav');
-const warehouseSelect = document.querySelector('#warehouse-select');
+const warehouseList = document.querySelector('#warehouse-list');
 const warehouseName = document.querySelector('#warehouse-name');
 const warehouseSummary = document.querySelector('#warehouse-summary');
 const stockRows = document.querySelector('#stock-rows');
@@ -38,6 +38,8 @@ const itemsList = document.querySelector('#items-list');
 let authToken = localStorage.getItem('authToken');
 let allItems = [];      // every item, for the item lists
 let currentStock = [];  // stock records of the chosen warehouse
+let warehouses = [];    // every warehouse, for the bar on the left
+let selectedWarehouseId = null;
 let toastTimer = null;
 
 // ---------- Helpers ----------
@@ -118,20 +120,22 @@ function stockStatus(quantity) {
 
 // ---------- Warehouses and stock ----------
 
-// GET /api/warehouses -> fill the warehouse list, then show its stock
+// GET /api/warehouses -> fill the warehouse bar, then show the chosen warehouse's stock
 async function loadWarehouses() {
   try {
-    const warehouses = await apiRequest(`${INVENTORY_API}/api/warehouses`);
-    fillSelect(warehouseSelect, warehouses.map((warehouse) => ({
-      value: warehouse.warehouseId,
-      label: `${warehouse.name} (${warehouse.location})`
-    })));
+    warehouses = await apiRequest(`${INVENTORY_API}/api/warehouses`);
 
-    // Coming from the Transfers page with ?warehouse=WH-101 opens that warehouse
+    // Coming from the Transfers page with ?warehouse=WH-101 opens that warehouse;
+    // otherwise keep the current one, or start with the first
     const wanted = new URLSearchParams(window.location.search).get('warehouse');
-    if (wanted && warehouses.some((warehouse) => warehouse.warehouseId === wanted)) {
-      warehouseSelect.value = wanted;
+    const exists = (id) => warehouses.some((warehouse) => warehouse.warehouseId === id);
+    if (wanted && exists(wanted)) {
+      selectedWarehouseId = wanted;
+    } else if (!exists(selectedWarehouseId) && warehouses.length > 0) {
+      selectedWarehouseId = warehouses[0].warehouseId;
     }
+
+    renderWarehouseBar();
     await loadStock();
   } catch (error) {
     console.error(error);
@@ -139,11 +143,44 @@ async function loadWarehouses() {
   }
 }
 
+// One button per warehouse in the bar on the left; the chosen one is highlighted
+function renderWarehouseBar() {
+  warehouseList.replaceChildren();
+  warehouses.forEach((warehouse) => {
+    const line = document.createElement('li');
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'warehouse-button';
+    if (warehouse.warehouseId === selectedWarehouseId) {
+      button.setAttribute('aria-current', 'true');
+    }
+    const name = document.createElement('span');
+    name.className = 'warehouse-button-name';
+    name.textContent = warehouse.name;
+    const place = document.createElement('span');
+    place.className = 'warehouse-button-place';
+    place.textContent = warehouse.location;
+    button.append(name, place);
+    button.addEventListener('click', () => selectWarehouse(warehouse.warehouseId));
+    line.append(button);
+    warehouseList.append(line);
+  });
+}
+
+// When the user picks another warehouse, show its stock
+function selectWarehouse(warehouseId) {
+  selectedWarehouseId = warehouseId;
+  setFeedback(checkResult, '');
+  setFeedback(addFeedback, '');
+  renderWarehouseBar();
+  loadStock();
+}
+
 // GET /api/warehouses/:id/inventory -> show the stock of the chosen warehouse
 async function loadStock() {
   try {
     const data = await apiRequest(
-      `${INVENTORY_API}/api/warehouses/${warehouseSelect.value}/inventory`);
+      `${INVENTORY_API}/api/warehouses/${selectedWarehouseId}/inventory`);
     currentStock = data.stock;
     warehouseName.textContent = data.warehouse.name;
     renderSummary(data.warehouse, data.stock);
@@ -155,7 +192,7 @@ async function loadStock() {
   }
 }
 
-// One sentence under the warehouse name, e.g. "Cairo. 3 items, 202 units, 1 running low."
+// Under the warehouse name: its city, then three counts (items, units, running low)
 function renderSummary(warehouse, stock) {
   let units = 0;
   let low = 0;
@@ -165,9 +202,30 @@ function renderSummary(warehouse, stock) {
       low = low + 1;
     }
   });
-  const lowText = low === 0 ? 'nothing running low' : `${low} running low`;
-  warehouseSummary.textContent =
-    `${warehouse.location}. ${stock.length} items, ${units} units in stock, ${lowText}.`;
+
+  const place = document.createElement('p');
+  place.className = 'rack-place';
+  place.textContent = warehouse.location;
+
+  const stats = document.createElement('dl');
+  stats.className = 'rack-stats';
+  stats.append(
+    makeStat(stock.length === 1 ? 'item' : 'items', stock.length),
+    makeStat('units in stock', units),
+    makeStat('running low', low, low > 0 ? 'stat-low' : '')
+  );
+  warehouseSummary.replaceChildren(place, stats);
+}
+
+function makeStat(label, value, extraClass) {
+  const stat = document.createElement('div');
+  stat.className = `rack-stat ${extraClass || ''}`.trim();
+  const number = document.createElement('dd');
+  number.textContent = value;
+  const name = document.createElement('dt');
+  name.textContent = label;
+  stat.append(name, number);
+  return stat;
 }
 
 function renderStock(stock) {
@@ -190,7 +248,7 @@ function renderStock(stock) {
     // Link to the Transfers page, with this warehouse and item already chosen
     const transferLink = document.createElement('a');
     transferLink.className = 'row-link';
-    transferLink.href = pageUrl('transfers', { from: warehouseSelect.value, item: record.itemId });
+    transferLink.href = pageUrl('transfers', { from: selectedWarehouseId, item: record.itemId });
     transferLink.textContent = 'Request a transfer';
     itemCell.append(name, sku, transferLink);
 
@@ -230,18 +288,10 @@ function renderStock(stock) {
     move.append(units, receive, dispatch);
     moveCell.append(move);
 
-    // Receive / Dispatch first, on the left of each row
-    row.append(moveCell, itemCell, qtyCell, statusCell);
+    row.append(itemCell, qtyCell, statusCell, moveCell);
     stockRows.append(row);
   });
 }
-
-// When the user picks another warehouse, show its stock
-warehouseSelect.addEventListener('change', () => {
-  setFeedback(checkResult, '');
-  setFeedback(addFeedback, '');
-  loadStock();
-});
 
 // Receive adds units, Dispatch removes them: PATCH /api/inventory/:id with { change }
 async function moveStock(record, unitsText, action) {
@@ -307,7 +357,7 @@ addForm.addEventListener('submit', async (event) => {
 
   const item = allItems.find((one) => one.itemId === addItem.value);
   const payload = {
-    warehouseId: warehouseSelect.value,
+    warehouseId: selectedWarehouseId,
     itemId: addItem.value,
     quantity: Number(addQuantity.value)
   };
@@ -334,7 +384,7 @@ checkForm.addEventListener('submit', async (event) => {
   event.preventDefault();
 
   const url = `${INVENTORY_API}/api/inventory/availability` +
-    `?warehouseId=${encodeURIComponent(warehouseSelect.value)}` +
+    `?warehouseId=${encodeURIComponent(selectedWarehouseId)}` +
     `&itemId=${encodeURIComponent(checkItem.value)}` +
     `&quantity=${encodeURIComponent(checkQuantity.value)}`;
 
@@ -445,6 +495,15 @@ async function toggleWhere(item, line, button) {
       list.append(total);
     }
 
+    // Link to the Tracking page, which shows where this item has moved
+    const history = document.createElement('a');
+    history.className = 'row-link';
+    history.href = pageUrl('tracking', { item: item.itemId });
+    history.textContent = 'See its movement history';
+    const historyLine = document.createElement('li');
+    historyLine.append(history);
+    list.append(historyLine);
+
     line.append(list);
     button.textContent = 'Hide';
     button.setAttribute('aria-expanded', 'true');
@@ -483,6 +542,7 @@ function showLogin(text) {
   userBar.hidden = true;
   mainNav.hidden = true;
   loginPanel.hidden = false;
+  resetLoginSteps();
   setFeedback(loginFeedback, text || '', text ? 'bad' : '');
 }
 
@@ -492,7 +552,7 @@ async function showApp(user) {
   appSection.hidden = false;
   userBar.hidden = false;
   mainNav.hidden = false;
-  userInfo.textContent = `${user.username}, ${user.role}`;
+  userInfo.textContent = roleLabel(user.role);
   addSection.hidden = user.role !== 'manager';
 
   await loadItems();

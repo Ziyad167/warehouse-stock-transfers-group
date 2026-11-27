@@ -9,6 +9,13 @@ async function readWarehouses() {
   return result.Items.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
+// Finds a warehouse by its name (not case sensitive); returns it or undefined
+async function findWarehouseByName(name) {
+  const warehouses = await readWarehouses();
+  const wanted = name.trim().toLowerCase();
+  return warehouses.find((warehouse) => warehouse.name.toLowerCase() === wanted);
+}
+
 // Saves a new warehouse and returns it
 async function createWarehouse({ name, location }) {
   const warehouse = {
@@ -27,4 +34,4 @@ async function findWarehouseById(warehouseId) {
   return result.Item;
 }
 
-module.exports = { readWarehouses, createWarehouse, findWarehouseById };
+module.exports = { readWarehouses, findWarehouseByName, createWarehouse, findWarehouseById };
