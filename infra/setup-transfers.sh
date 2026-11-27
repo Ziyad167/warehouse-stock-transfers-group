@@ -2,7 +2,7 @@
 # Creates the Transfer Request service resources on Floci (local AWS):
 #   1) DynamoDB: the TransferRequests table
 #   2) IAM: a role with a least-privilege policy
-#   3) S3: a bucket that serves the transfers page
+#   3) S3: a bucket that serves the transfers and approvals pages
 # Run from the project root:   bash infra/setup-transfers.sh
 # Safe to run again: anything that already exists is skipped.
 
@@ -44,7 +44,10 @@ if [ -f frontend/transfers.html ]; then
   aws --endpoint-url "$ENDPOINT" s3 cp frontend/js/transfers-config.js s3://transfers-frontend/js/transfers-config.js --content-type application/javascript
   aws --endpoint-url "$ENDPOINT" s3 cp frontend/js/common.js s3://transfers-frontend/js/common.js --content-type application/javascript
   aws --endpoint-url "$ENDPOINT" s3 cp frontend/js/transfers.js s3://transfers-frontend/js/transfers.js --content-type application/javascript
+  aws --endpoint-url "$ENDPOINT" s3 cp frontend/approvals.html s3://transfers-frontend/approvals.html --content-type text/html
+  aws --endpoint-url "$ENDPOINT" s3 cp frontend/js/approvals.js s3://transfers-frontend/js/approvals.js --content-type application/javascript
   echo "  Transfers page on S3: $ENDPOINT/transfers-frontend/transfers.html"
+  echo "  Approvals page on S3: $ENDPOINT/transfers-frontend/approvals.html"
 fi
 
 echo "=== Done ==="

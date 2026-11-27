@@ -19,6 +19,7 @@
     <nav id="main-nav" class="main-nav" aria-label="Pages" hidden>
         <a data-page="inventory" href="inventory.html" aria-current="page">Inventory</a>
         <a data-page="transfers" href="transfers.html">Transfers</a>
+        <a data-page="approvals" href="approvals.html" hidden>Approvals</a>
         <a data-page="tracking" href="tracking.html">Tracking</a>
     </nav>
     <p id="api-status" class="api-status">Checking connection...</p>
@@ -42,8 +43,8 @@
                 <span class="role-desc">Runs the warehouses</span>
                 <span class="role-perms">
                     <span>Approve or reject transfers</span>
-                    <span>Add warehouses and items</span>
-                    <span>Receive and dispatch stock</span>
+                    <span>Add items to warehouses</span>
+                    <span>Everything staff can do</span>
                 </span>
             </button>
             <button class="role-card" type="button" role="radio" aria-checked="false" data-role="staff">
@@ -52,9 +53,9 @@
                 <span class="role-title">Staff</span>
                 <span class="role-desc">Works on the warehouse floor</span>
                 <span class="role-perms">
-                    <span>Receive and dispatch stock</span>
                     <span>Request transfers</span>
-                    <span>Check stock levels</span>
+                    <span>Dispatch and receive shipments</span>
+                    <span>Add or remove stock</span>
                 </span>
             </button>
         </div>
@@ -97,7 +98,7 @@
                     <th scope="col">Item</th>
                     <th scope="col" class="col-qty">In stock</th>
                     <th scope="col">Status</th>
-                    <th scope="col">Receive or dispatch units</th>
+                    <th scope="col">Add or remove units</th>
                 </tr>
             </thead>
             <tbody id="stock-rows"></tbody>
@@ -147,9 +148,11 @@
     </aside>
 </main>
 
-<!-- config.js (API URL) and common.js (shared helpers) must load before app.js.
+<!-- config.js (Inventory API URL), transfers-config.js (Transfers API URL, for the
+     number on the Approvals tab) and common.js (shared helpers) must load before app.js.
      defer keeps this order. -->
 <script src="js/config.js" defer></script>
+<script src="js/transfers-config.js" defer></script>
 <script src="js/common.js" defer></script>
 <script src="js/app.js" defer></script>
 </body>

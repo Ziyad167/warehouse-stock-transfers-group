@@ -1,7 +1,8 @@
 const transferService = require('../services/transferService');
 const inventoryClient = require('../services/inventoryClient');
 
-const STATUSES = ['PENDING', 'APPROVED', 'REJECTED'];
+// DISPATCHED and RECEIVED are set later by the Tracking service (Saif)
+const STATUSES = ['PENDING', 'APPROVED', 'REJECTED', 'DISPATCHED', 'RECEIVED'];
 
 // Sends an error in the same shape everywhere: { error: { code, message } }
 function sendError(res, status, code, message) {
@@ -128,12 +129,6 @@ async function decideTransfer(req, res, next) {
     if (transfer.status !== 'PENDING') {
       return sendError(res, 409, 'ALREADY_DECIDED',
         `This request is already ${transfer.status}.`);
-    }
-
-    // Business rule: nobody may decide their own request
-    if (transfer.requestedBy === req.user.username) {
-      return sendError(res, 403, 'OWN_REQUEST',
-        'You cannot approve or reject your own request.');
     }
 
     // Business rule: approve only if the source warehouse has enough stock right now

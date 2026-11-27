@@ -264,7 +264,9 @@ function renderStock(stock) {
     badge.textContent = status === 'ok' ? 'OK' : status === 'low' ? 'Low' : 'Out of stock';
     statusCell.append(badge);
 
-    // Units box with Receive and Dispatch buttons
+    // Units box with Add and Remove buttons. This corrects the stock of ONE warehouse
+    // (a delivery from a supplier, damaged goods). Moving stock between warehouses
+    // is done with a transfer: Transfers -> Approvals -> Tracking.
     const moveCell = document.createElement('td');
     moveCell.className = 'move-cell';
     const move = document.createElement('div');
@@ -275,17 +277,17 @@ function renderStock(stock) {
     units.step = '1';
     units.placeholder = 'Units';
     units.setAttribute('aria-label', `Units of ${record.itemName}`);
-    const receive = document.createElement('button');
-    receive.type = 'button';
-    receive.className = 'button-secondary';
-    receive.textContent = 'Receive';
-    receive.addEventListener('click', () => moveStock(record, units.value, 'receive'));
-    const dispatch = document.createElement('button');
-    dispatch.type = 'button';
-    dispatch.className = 'button-secondary';
-    dispatch.textContent = 'Dispatch';
-    dispatch.addEventListener('click', () => moveStock(record, units.value, 'dispatch'));
-    move.append(units, receive, dispatch);
+    const add = document.createElement('button');
+    add.type = 'button';
+    add.className = 'button-secondary';
+    add.textContent = 'Add';
+    add.addEventListener('click', () => moveStock(record, units.value, 'add'));
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'button-secondary';
+    remove.textContent = 'Remove';
+    remove.addEventListener('click', () => moveStock(record, units.value, 'remove'));
+    move.append(units, add, remove);
     moveCell.append(move);
 
     row.append(itemCell, qtyCell, statusCell, moveCell);
@@ -293,14 +295,14 @@ function renderStock(stock) {
   });
 }
 
-// Receive adds units, Dispatch removes them: PATCH /api/inventory/:id with { change }
+// Add puts units in, Remove takes them out: PATCH /api/inventory/:id with { change }
 async function moveStock(record, unitsText, action) {
   const units = Number(unitsText);
   if (!Number.isInteger(units) || units < 1) {
     showToast('Enter a whole number of units first.', 'bad');
     return;
   }
-  const change = action === 'receive' ? units : -units;
+  const change = action === 'add' ? units : -units;
 
   try {
     const updated = await apiRequest(`${INVENTORY_API}/api/inventory/${record.inventoryId}`, {
@@ -309,7 +311,7 @@ async function moveStock(record, unitsText, action) {
       body: JSON.stringify({ change })
     });
     await loadStock();
-    const done = action === 'receive' ? 'Received' : 'Dispatched';
+    const done = action === 'add' ? 'Added' : 'Removed';
     if (updated.lowStockAlert) {
       showToast(`${done} ${units} units of ${record.itemName}. Only ${updated.quantity} left, ` +
         'so a low stock alert was sent to managers.', 'warn');
@@ -547,6 +549,7 @@ function showLogin(text) {
 }
 
 // Shows the app for a logged-in user; only managers see "Stock a new item here"
+// and the Approvals tab in the menu
 async function showApp(user) {
   loginPanel.hidden = true;
   appSection.hidden = false;
@@ -555,6 +558,7 @@ async function showApp(user) {
   userInfo.textContent = roleLabel(user.role);
   addSection.hidden = user.role !== 'manager';
 
+  await setupNavForUser(user);
   await loadItems();
   await loadWarehouses();
   await searchItems('');

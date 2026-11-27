@@ -20,6 +20,7 @@
     <nav id="main-nav" class="main-nav" aria-label="Pages" hidden>
         <a data-page="inventory" href="inventory.html">Inventory</a>
         <a data-page="transfers" href="transfers.html" aria-current="page">Transfers</a>
+        <a data-page="approvals" href="approvals.html" hidden>Approvals</a>
         <a data-page="tracking" href="tracking.html">Tracking</a>
     </nav>
     <p id="api-status" class="api-status">Checking connection...</p>
@@ -43,8 +44,8 @@
                 <span class="role-desc">Runs the warehouses</span>
                 <span class="role-perms">
                     <span>Approve or reject transfers</span>
-                    <span>Add warehouses and items</span>
-                    <span>Receive and dispatch stock</span>
+                    <span>Add items to warehouses</span>
+                    <span>Everything staff can do</span>
                 </span>
             </button>
             <button class="role-card" type="button" role="radio" aria-checked="false" data-role="staff">
@@ -53,9 +54,9 @@
                 <span class="role-title">Staff</span>
                 <span class="role-desc">Works on the warehouse floor</span>
                 <span class="role-perms">
-                    <span>Receive and dispatch stock</span>
                     <span>Request transfers</span>
-                    <span>Check stock levels</span>
+                    <span>Dispatch and receive shipments</span>
+                    <span>Add or remove stock</span>
                 </span>
             </button>
         </div>

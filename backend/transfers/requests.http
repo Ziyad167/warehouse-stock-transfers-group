@@ -221,7 +221,7 @@ Content-Type: application/json
   "quantity": 5
 }
 
-### R28 Manager tries to approve their own request (expect 403 OWN_REQUEST)
+### R28 Manager approves their own request (expect 200, APPROVED)
 PATCH {{baseUrl}}/api/transfers/{{managerTransfer.response.body.$.transferId}}/decision
 Authorization: Bearer {{managerToken}}
 Content-Type: application/json

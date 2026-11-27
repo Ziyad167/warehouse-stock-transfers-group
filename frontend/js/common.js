@@ -1,12 +1,20 @@
-// Shared by the Inventory, Transfers and Tracking pages:
+// Shared by the Inventory, Transfers, Approvals and Tracking pages:
 // links between the pages, the two-step login (choose a role, then log in),
 // and the eye button on password fields.
 
 // Returns the address of a page, with optional ?key=value parameters.
-// On Floci each page is in its own S3 bucket; with http-server they are all in one folder.
+// On Floci each service's pages are in its own S3 bucket; with http-server they are all in one folder.
+// The Approvals page belongs to the Transfers service, so it is in the transfers bucket.
+const PAGE_BUCKETS = {
+  inventory: 'inventory-frontend',
+  transfers: 'transfers-frontend',
+  approvals: 'transfers-frontend',
+  tracking: 'tracking-frontend'
+};
+
 function pageUrl(page, params) {
   const onS3 = window.location.pathname.includes('-frontend/');
-  let url = onS3 ? `/${page}-frontend/${page}.html` : `${page}.html`;
+  let url = onS3 ? `/${PAGE_BUCKETS[page]}/${page}.html` : `${page}.html`;
   if (params) {
     url = `${url}?${new URLSearchParams(params)}`;
   }
@@ -18,6 +26,46 @@ function setupNavigation() {
   document.querySelectorAll('a[data-page]').forEach((link) => {
     link.href = pageUrl(link.dataset.page);
   });
+}
+
+// Shows the menu for the logged-in user: the Approvals tab is for managers only
+async function setupNavForUser(user) {
+  const approvalsLink = document.querySelector('a[data-page="approvals"]');
+  if (!approvalsLink) {
+    return;
+  }
+  approvalsLink.hidden = user.role !== 'manager';
+  await refreshApprovalCount();
+}
+
+// Puts the number of requests waiting for a decision on the Approvals tab
+// (GET /api/transfers?status=PENDING on the Transfers service)
+async function refreshApprovalCount() {
+  const link = document.querySelector('a[data-page="approvals"]');
+  const token = localStorage.getItem('authToken');
+  if (!link || link.hidden || !token || typeof TRANSFERS_API === 'undefined') {
+    return;
+  }
+  try {
+    const response = await fetch(`${TRANSFERS_API}/api/transfers?status=PENDING`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    if (!response.ok) {
+      return;
+    }
+    const waiting = await response.json();
+    let count = link.querySelector('.nav-count');
+    if (!count) {
+      count = document.createElement('span');
+      count.className = 'nav-count';
+      link.append(count);
+    }
+    count.textContent = waiting.length;
+    count.hidden = waiting.length === 0;
+  } catch (error) {
+    // The Transfers backend is not running: show the tab without a number
+    console.error(error);
+  }
 }
 
 // "manager" -> "Manager", "staff" -> "Staff"
