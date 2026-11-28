@@ -334,6 +334,15 @@ function buildNextStep(transfer) {
     } else {
       line.append('Next: a manager approves or rejects it on the Approvals page.');
     }
+    // The person who asked can cancel the request until a manager decides
+    if (transfer.requestedBy === currentUser.username) {
+      const cancel = document.createElement('button');
+      cancel.type = 'button';
+      cancel.className = 'link-button danger cancel-request';
+      cancel.textContent = 'Cancel request';
+      cancel.addEventListener('click', () => cancelRequest(transfer, cancel));
+      line.append(' ', cancel);
+    }
   } else if (transfer.status === 'APPROVED') {
     line.append('Next: dispatch it from the source warehouse. ', link('tracking', 'Open Tracking'));
   } else if (transfer.status === 'DISPATCHED') {
@@ -348,6 +357,21 @@ function buildNextStep(transfer) {
     line.append(`Stopped: ${transfer.decisionReason || 'rejected by a manager'}.`);
   }
   return line;
+}
+
+// DELETE /api/transfers/:id -> cancel your own request while it is still waiting
+async function cancelRequest(transfer, button) {
+  button.disabled = true;
+  try {
+    await apiRequest(`${TRANSFERS_API}/api/transfers/${transfer.transferId}`, { method: 'DELETE' });
+    showToast(`Request cancelled: ${transfer.quantity} units of ${itemName(transfer.itemId)}.`, 'good');
+    await loadTransfers();
+    await refreshApprovalCount();
+  } catch (error) {
+    console.error(error);
+    showToast(`Not cancelled: ${error.message}`, 'bad');
+    button.disabled = false;
+  }
 }
 
 // POST /api/transfers -> send a new request

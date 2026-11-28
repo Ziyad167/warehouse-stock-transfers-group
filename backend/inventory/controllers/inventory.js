@@ -196,7 +196,29 @@ async function listItemStock(req, res, next) {
     next(error);
   }
 }
+// DELETE /api/inventory/:id -> 204 (the item leaves this warehouse), or 404 / 409
+async function deleteRecord(req, res, next) {
+  try {
+    const record = await inventoryService.findRecordById(req.params.id);
+    if (!record) {
+      return sendError(res, 404, 'INVENTORY_NOT_FOUND', 'Inventory record not found.');
+    }
+
+    // Business rule: only an empty record can be removed, so no stock disappears by mistake
+    if (record.quantity !== 0) {
+      return sendError(res, 409, 'NOT_EMPTY',
+        `There are still ${record.quantity} in stock. Remove them first.`);
+    }
+
+    await inventoryService.deleteRecord(record.inventoryId);
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
+  deleteRecord,
   createInventoryRecord,
   listWarehouseInventory,
   checkAvailability,

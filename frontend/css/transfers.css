@@ -245,3 +245,8 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* "Cancel request" next to the next-step line */
+.transfer-next .cancel-request {
+    margin-left: 0.5rem;
+}

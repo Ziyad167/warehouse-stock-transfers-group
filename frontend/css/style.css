@@ -869,3 +869,105 @@ label {
         transition: none !important;
     }
 }
+/* ---------- Change and delete (managers) ---------- */
+button.link-button {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--slate);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: underline;
+}
+button.link-button:hover {
+    color: #3d5163;
+}
+button.danger {
+    color: var(--stop);
+}
+button.button-secondary.danger {
+    border-color: var(--stop);
+}
+.rack-sign .link-button {
+    margin-top: 0.9rem;
+}
+.move-cell .link-button {
+    display: block;
+    margin-top: 0.45rem;
+    font-size: 0.82rem;
+}
+.result-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 1rem;
+    margin-top: 0.4rem;
+}
+.delete-question span {
+    font-weight: 600;
+}
+.inline-edit {
+    display: grid;
+    gap: 0.35rem;
+    margin-top: 0.75rem;
+}
+.inline-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+.inline-fields > div {
+    display: grid;
+    gap: 0.3rem;
+}
+.inline-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.4rem;
+}
+.inline-edit .feedback {
+    margin: 0;
+}
+@media (max-width: 640px) {
+    .inline-fields {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ---------- Alerts and messages from SNS / SQS (top of the page) ---------- */
+.alerts {
+    grid-column: 1 / -1;
+    padding: 1rem 1.4rem;
+    border: 1px solid var(--line);
+    border-left: 6px solid var(--safety);
+    border-radius: 10px;
+    background: #fffbea;
+}
+.alerts-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+.alerts-head h2 {
+    font-size: 1.35rem;
+    font-weight: 600;
+}
+.alerts-list {
+    display: grid;
+    gap: 0.35rem;
+    margin: 0.6rem 0 0;
+    padding: 0;
+    list-style: none;
+}
+.alerts-list li {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    font-size: 0.95rem;
+}
+.alerts-time {
+    flex-shrink: 0;
+    font-size: 0.85rem;
+    color: var(--steel);
+}

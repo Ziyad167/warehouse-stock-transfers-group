@@ -32,6 +32,15 @@ const addFeedback = document.querySelector('#add-feedback');
 const searchForm = document.querySelector('#search-form');
 const searchText = document.querySelector('#search-text');
 const itemsList = document.querySelector('#items-list');
+const alertsSection = document.querySelector('#alerts-section');
+const alertsList = document.querySelector('#alerts-list');
+const alertsClear = document.querySelector('#alerts-clear');
+const editWarehouseButton = document.querySelector('#edit-warehouse-button');
+const warehouseEditForm = document.querySelector('#warehouse-edit-form');
+const editWarehouseName = document.querySelector('#edit-warehouse-name');
+const editWarehouseLocation = document.querySelector('#edit-warehouse-location');
+const editWarehouseCancel = document.querySelector('#edit-warehouse-cancel');
+const warehouseEditFeedback = document.querySelector('#warehouse-edit-feedback');
 
 // ---------- Data kept by the page ----------
 // Lab 8: the login token is kept in localStorage, so a page refresh stays logged in
@@ -40,6 +49,9 @@ let allItems = [];      // every item, for the item lists
 let currentStock = [];  // stock records of the chosen warehouse
 let warehouses = [];    // every warehouse, for the bar on the left
 let selectedWarehouseId = null;
+let currentUser = null;   // who is logged in: { username, role }
+let shownAlerts = [];        // low-stock alerts received since the page opened, newest first
+let currentWarehouse = null;  // the chosen warehouse: { warehouseId, name, location }
 let toastTimer = null;
 
 // ---------- Helpers ----------
@@ -101,6 +113,11 @@ function fillSelect(select, entries) {
     option.textContent = entry.label;
     select.append(option);
   });
+}
+
+// Managers may change and delete things; staff may not
+function isManager() {
+  return currentUser !== null && currentUser.role === 'manager';
 }
 
 function itemLabel(item) {
@@ -182,7 +199,10 @@ async function loadStock() {
     const data = await apiRequest(
       `${INVENTORY_API}/api/warehouses/${selectedWarehouseId}/inventory`);
     currentStock = data.stock;
+    currentWarehouse = data.warehouse;
     warehouseName.textContent = data.warehouse.name;
+    editWarehouseButton.hidden = !isManager();
+    warehouseEditForm.hidden = true;
     renderSummary(data.warehouse, data.stock);
     renderStock(data.stock);
     refreshAddChoices();
@@ -290,6 +310,16 @@ function renderStock(stock) {
     move.append(units, add, remove);
     moveCell.append(move);
 
+    // An empty record can be taken out of this warehouse (managers only)
+    if (record.quantity === 0 && isManager()) {
+      const drop = document.createElement('button');
+      drop.type = 'button';
+      drop.className = 'link-button';
+      drop.textContent = 'Remove this item from the warehouse';
+      drop.addEventListener('click', () => removeRecord(record));
+      moveCell.append(drop);
+    }
+
     row.append(itemCell, qtyCell, statusCell, moveCell);
     stockRows.append(row);
   });
@@ -311,6 +341,7 @@ async function moveStock(record, unitsText, action) {
       body: JSON.stringify({ change })
     });
     await loadStock();
+    await loadAlerts();
     const done = action === 'add' ? 'Added' : 'Removed';
     if (updated.lowStockAlert) {
       showToast(`${done} ${units} units of ${record.itemName}. Only ${updated.quantity} left, ` +
@@ -323,6 +354,99 @@ async function moveStock(record, unitsText, action) {
     showToast(`Could not update stock: ${error.message}`, 'bad');
   }
 }
+
+// DELETE /api/inventory/:id -> the item leaves this warehouse (only when 0 are left)
+async function removeRecord(record) {
+  try {
+    await apiRequest(`${INVENTORY_API}/api/inventory/${record.inventoryId}`, { method: 'DELETE' });
+    await loadStock();
+    showToast(`${record.itemName} was removed from this warehouse.`, 'good');
+  } catch (error) {
+    console.error(error);
+    showToast(`Not removed: ${error.message}`, 'bad');
+  }
+}
+
+// ---------- Low-stock alerts (managers) ----------
+
+// GET /api/alerts -> the new alerts that SNS put in the SQS queue since the last check
+async function loadAlerts() {
+  if (!isManager()) {
+    alertsSection.hidden = true;
+    return;
+  }
+  try {
+    const alerts = await apiRequest(`${INVENTORY_API}/api/alerts`);
+    shownAlerts = [...alerts.reverse(), ...shownAlerts].slice(0, 10);
+    renderAlerts();
+  } catch (error) {
+    // The queue cannot be read: the page still works without alerts
+    console.error(error);
+  }
+}
+
+function renderAlerts() {
+  alertsList.replaceChildren();
+  alertsSection.hidden = shownAlerts.length === 0;
+  shownAlerts.forEach((alert) => {
+    const line = document.createElement('li');
+    const text = document.createElement('span');
+    text.textContent = alert.text;
+    const time = document.createElement('span');
+    time.className = 'alerts-time';
+    time.textContent = new Date(alert.sentAt).toLocaleTimeString();
+    line.append(text, time);
+    alertsList.append(line);
+  });
+}
+
+alertsClear.addEventListener('click', () => {
+  shownAlerts = [];
+  renderAlerts();
+});
+
+// Check for new alerts every 20 seconds while a manager has the page open
+setInterval(() => {
+  if (isManager() && !appSection.hidden) {
+    loadAlerts();
+  }
+}, 20000);
+
+// ---------- Change a warehouse (managers) ----------
+
+editWarehouseButton.addEventListener('click', () => {
+  editWarehouseName.value = currentWarehouse.name;
+  editWarehouseLocation.value = currentWarehouse.location;
+  setFeedback(warehouseEditFeedback, '');
+  warehouseEditForm.hidden = false;
+  editWarehouseButton.hidden = true;
+  editWarehouseName.focus();
+});
+
+editWarehouseCancel.addEventListener('click', () => {
+  warehouseEditForm.hidden = true;
+  editWarehouseButton.hidden = false;
+});
+
+// PATCH /api/warehouses/:id -> save the new name and city
+warehouseEditForm.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  try {
+    await apiRequest(`${INVENTORY_API}/api/warehouses/${currentWarehouse.warehouseId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: editWarehouseName.value.trim(),
+        location: editWarehouseLocation.value.trim()
+      })
+    });
+    await loadWarehouses();
+    showToast('Warehouse saved.', 'good');
+  } catch (error) {
+    console.error(error);
+    setFeedback(warehouseEditFeedback, `Not saved: ${error.message}`, 'bad');
+  }
+});
 
 // ---------- Items ----------
 
@@ -449,12 +573,147 @@ async function searchItems(text) {
 
       head.append(info, button);
       line.append(head);
+
+      // Managers can change or delete an item
+      if (isManager()) {
+        line.append(buildItemActions(item, line));
+      }
       itemsList.append(line);
     });
   } catch (error) {
     console.error(error);
     showToast(`Could not search: ${error.message}`, 'bad');
   }
+}
+
+// "Edit" and "Delete" under an item in the search results (managers)
+function buildItemActions(item, line) {
+  const actions = document.createElement('div');
+  actions.className = 'result-actions';
+
+  const edit = document.createElement('button');
+  edit.type = 'button';
+  edit.className = 'link-button';
+  edit.textContent = 'Edit';
+  edit.addEventListener('click', () => {
+    actions.replaceWith(buildItemEditForm(item, line));
+  });
+
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.className = 'link-button danger';
+  remove.textContent = 'Delete';
+  remove.addEventListener('click', () => {
+    actions.replaceWith(buildDeleteQuestion(item, line));
+  });
+
+  actions.append(edit, remove);
+  return actions;
+}
+
+// Small form to change the name, SKU, category and description of an item
+function buildItemEditForm(item, line) {
+  const form = document.createElement('form');
+  form.className = 'inline-edit';
+
+  const fields = [
+    { key: 'name', label: 'Name', value: item.name },
+    { key: 'sku', label: 'SKU', value: item.sku },
+    { key: 'category', label: 'Category', value: item.category },
+    { key: 'description', label: 'Description', value: item.description || '' }
+  ];
+  const inputs = {};
+  fields.forEach((field) => {
+    const id = `edit-${field.key}-${item.itemId}`;
+    const label = document.createElement('label');
+    label.htmlFor = id;
+    label.textContent = field.label;
+    const input = document.createElement('input');
+    input.id = id;
+    input.type = 'text';
+    input.value = field.value;
+    inputs[field.key] = input;
+    form.append(label, input);
+  });
+
+  const buttons = document.createElement('div');
+  buttons.className = 'inline-actions';
+  const save = document.createElement('button');
+  save.type = 'submit';
+  save.className = 'button-primary';
+  save.textContent = 'Save';
+  const cancel = document.createElement('button');
+  cancel.type = 'button';
+  cancel.className = 'button-secondary';
+  cancel.textContent = 'Cancel';
+  cancel.addEventListener('click', () => form.replaceWith(buildItemActions(item, line)));
+  buttons.append(save, cancel);
+
+  const feedback = document.createElement('p');
+  feedback.className = 'feedback';
+  form.append(buttons, feedback);
+
+  // PATCH /api/items/:id -> save the changes
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    try {
+      await apiRequest(`${INVENTORY_API}/api/items/${item.itemId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: inputs.name.value,
+          sku: inputs.sku.value,
+          category: inputs.category.value,
+          description: inputs.description.value
+        })
+      });
+      showToast('Item saved.', 'good');
+      await loadItems();
+      await loadStock();
+      await searchItems(searchText.value.trim());
+    } catch (error) {
+      console.error(error);
+      setFeedback(feedback, `Not saved: ${error.message}`, 'bad');
+    }
+  });
+  return form;
+}
+
+// "Delete Work Gloves?" with Yes and Keep buttons
+function buildDeleteQuestion(item, line) {
+  const box = document.createElement('div');
+  box.className = 'result-actions delete-question';
+
+  const question = document.createElement('span');
+  question.textContent = `Delete ${item.name}?`;
+
+  const yes = document.createElement('button');
+  yes.type = 'button';
+  yes.className = 'button-secondary danger';
+  yes.textContent = 'Yes, delete';
+
+  const keep = document.createElement('button');
+  keep.type = 'button';
+  keep.className = 'button-secondary';
+  keep.textContent = 'Keep it';
+  keep.addEventListener('click', () => box.replaceWith(buildItemActions(item, line)));
+
+  // DELETE /api/items/:id -> the item is deleted (only if no warehouse holds it)
+  yes.addEventListener('click', async () => {
+    try {
+      await apiRequest(`${INVENTORY_API}/api/items/${item.itemId}`, { method: 'DELETE' });
+      showToast(`${item.name} was deleted.`, 'good');
+      await loadItems();
+      await searchItems(searchText.value.trim());
+    } catch (error) {
+      console.error(error);
+      showToast(`Not deleted: ${error.message}`, 'bad');
+      box.replaceWith(buildItemActions(item, line));
+    }
+  });
+
+  box.append(question, yes, keep);
+  return box;
 }
 
 // GET /api/items/:id/stock -> shows every warehouse that holds this item
@@ -535,6 +794,9 @@ async function checkApi() {
 // Forgets the token in this browser
 function clearLogin() {
   authToken = null;
+  currentUser = null;
+  shownAlerts = [];
+  alertsSection.hidden = true;
   localStorage.removeItem('authToken');
 }
 
@@ -551,6 +813,7 @@ function showLogin(text) {
 // Shows the app for a logged-in user; only managers see "Stock a new item here"
 // and the Approvals tab in the menu
 async function showApp(user) {
+  currentUser = user;
   loginPanel.hidden = true;
   appSection.hidden = false;
   userBar.hidden = false;
@@ -561,6 +824,7 @@ async function showApp(user) {
   await setupNavForUser(user);
   await loadItems();
   await loadWarehouses();
+  await loadAlerts();
   await searchItems('');
 }
 

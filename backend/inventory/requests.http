@@ -361,3 +361,186 @@ Authorization: Bearer {{managerToken}}
 ### T49 Unknown item (expect 404 ITEM_NOT_FOUND)
 GET {{baseUrl}}/api/items/ITM-999/stock
 Authorization: Bearer {{managerToken}}
+
+### ---------- CHANGE AND DELETE (managers only) ----------
+### A09 logged the staff account out, so U00 logs it in again for the staff tests below.
+
+### U00 Log in as staff again (expect 200 with a token)
+# @name loginStaffAgain
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "staff12",
+  "password": "Staff12344"
+}
+
+### U01 Create a helmet to change and delete later (expect 201 the first time)
+# @name helmet
+POST {{baseUrl}}/api/items
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "name": "Safety Helmet",
+  "sku": "HLM-01",
+  "category": "Safety"
+}
+
+### U02 Manager changes its name and category (expect 200)
+PATCH {{baseUrl}}/api/items/{{helmet.response.body.$.itemId}}
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "name": "Safety Helmet Yellow",
+  "category": "Safety Gear"
+}
+
+### U03 Staff tries to change it (expect 403 FORBIDDEN)
+PATCH {{baseUrl}}/api/items/{{helmet.response.body.$.itemId}}
+Authorization: Bearer {{loginStaffAgain.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "name": "Helmet"
+}
+
+### U04 New SKU already belongs to another item (expect 409 DUPLICATE_SKU)
+PATCH {{baseUrl}}/api/items/{{helmet.response.body.$.itemId}}
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "sku": "BOX-LRG-01"
+}
+
+### U05 Nothing to change (expect 400 VALIDATION_ERROR)
+PATCH {{baseUrl}}/api/items/{{helmet.response.body.$.itemId}}
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{}
+
+### U06 Change an item that does not exist (expect 404 ITEM_NOT_FOUND)
+PATCH {{baseUrl}}/api/items/ITM-0000
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "name": "Ghost"
+}
+
+### U07 Put the helmet in Alexandria with 0 units (expect 201)
+# @name helmetRecord
+POST {{baseUrl}}/api/inventory
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "warehouseId": "WH-1795391950080",
+  "itemId": "{{helmet.response.body.$.itemId}}",
+  "quantity": 0
+}
+
+### U08 Delete the helmet while a warehouse still holds it (expect 409 ITEM_IN_USE)
+DELETE {{baseUrl}}/api/items/{{helmet.response.body.$.itemId}}
+Authorization: Bearer {{managerToken}}
+
+### U09 Take a record that still has stock out of a warehouse (expect 409 NOT_EMPTY)
+DELETE {{baseUrl}}/api/inventory/INV-101
+Authorization: Bearer {{managerToken}}
+
+### U10 Take the empty helmet record out of Alexandria (expect 204)
+DELETE {{baseUrl}}/api/inventory/{{helmetRecord.response.body.$.inventoryId}}
+Authorization: Bearer {{managerToken}}
+
+### U11 Now delete the helmet (expect 204)
+DELETE {{baseUrl}}/api/items/{{helmet.response.body.$.itemId}}
+Authorization: Bearer {{managerToken}}
+
+### U12 Delete it again (expect 404 ITEM_NOT_FOUND)
+DELETE {{baseUrl}}/api/items/{{helmet.response.body.$.itemId}}
+Authorization: Bearer {{managerToken}}
+
+### U13 Staff tries to delete an item (expect 403 FORBIDDEN)
+DELETE {{baseUrl}}/api/items/ITM-101
+Authorization: Bearer {{loginStaffAgain.response.body.$.token}}
+
+### W01 Manager saves Alexandria's name and city (expect 200)
+PATCH {{baseUrl}}/api/warehouses/WH-1795391950080
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "name": "Alexandria Warehouse",
+  "location": "Alexandria"
+}
+
+### W02 Rename it to a name another warehouse has (expect 409 DUPLICATE_WAREHOUSE)
+PATCH {{baseUrl}}/api/warehouses/WH-1795391950080
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "name": "Cairo Main Warehouse"
+}
+
+### W03 Name too short (expect 400 VALIDATION_ERROR)
+PATCH {{baseUrl}}/api/warehouses/WH-1795391950080
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "name": "A"
+}
+
+### W04 Warehouse that does not exist (expect 404 WAREHOUSE_NOT_FOUND)
+PATCH {{baseUrl}}/api/warehouses/WH-0000
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "location": "Giza"
+}
+
+### W05 Staff tries to rename a warehouse (expect 403 FORBIDDEN)
+PATCH {{baseUrl}}/api/warehouses/WH-101
+Authorization: Bearer {{loginStaffAgain.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "name": "My Warehouse"
+}
+
+### ---------- LOW-STOCK ALERTS (SNS -> SQS) ----------
+
+### AL01 Take Cairo's tape down to 5, below the limit of 10 (expect 200, lowStockAlert true)
+PATCH {{baseUrl}}/api/inventory/INV-1795395350736
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "change": -35
+}
+
+### AL02 Manager reads the new alerts from the queue (expect 200, the tape alert is in the list)
+GET {{baseUrl}}/api/alerts
+Authorization: Bearer {{managerToken}}
+
+### AL03 Read again: each alert is delivered once (expect 200, empty list)
+GET {{baseUrl}}/api/alerts
+Authorization: Bearer {{managerToken}}
+
+### AL04 Staff tries to read the alerts (expect 403 FORBIDDEN)
+GET {{baseUrl}}/api/alerts
+Authorization: Bearer {{loginStaffAgain.response.body.$.token}}
+
+### AL05 Put Cairo's tape back to 40 (expect 200)
+PATCH {{baseUrl}}/api/inventory/INV-1795395350736
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "change": 35
+}

@@ -1,4 +1,4 @@
-const { ScanCommand, PutCommand, GetCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+const { ScanCommand, PutCommand, GetCommand, UpdateCommand, DeleteCommand } = require('@aws-sdk/lib-dynamodb');
 const ddb = require('../db');
 
 const TABLE = 'InventoryStock';
@@ -74,7 +74,13 @@ async function changeQuantity(inventoryId, change) {
   return result.Attributes;
 }
 
+// Deletes one stock record (an item leaves a warehouse for good)
+async function deleteRecord(inventoryId) {
+  await ddb.send(new DeleteCommand({ TableName: TABLE, Key: { inventoryId } }));
+}
+
 module.exports = {
+  deleteRecord,
   findRecord,
   listByWarehouse,
   listByItem,

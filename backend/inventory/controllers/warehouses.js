@@ -61,7 +61,48 @@ async function createWarehouse(req, res, next) {
   }
 }
 
+// PATCH /api/warehouses/:id with { name, location } -> 200 with the changed warehouse,
+// or 400 / 404 / 409 / 415
+async function updateWarehouse(req, res, next) {
+  try {
+    if (!req.is('application/json')) {
+      return sendError(res, 415, 'UNSUPPORTED_MEDIA_TYPE',
+        'Content-Type must be application/json.');
+    }
+
+    const warehouse = await warehouseService.findWarehouseById(req.params.id);
+    if (!warehouse) {
+      return sendError(res, 404, 'WAREHOUSE_NOT_FOUND', 'Warehouse not found.');
+    }
+
+    const { name, location } = req.body;
+    if (name === undefined && location === undefined) {
+      return sendError(res, 400, 'VALIDATION_ERROR', 'Send a new name, a new location, or both.');
+    }
+    const problem = (name !== undefined && checkText(name, 'Name', 2, 100)) ||
+      (location !== undefined && checkText(location, 'Location', 2, 100));
+    if (problem) {
+      return sendError(res, 400, 'VALIDATION_ERROR', problem);
+    }
+
+    // Business rule: two warehouses cannot have the same name
+    if (name !== undefined) {
+      const owner = await warehouseService.findWarehouseByName(name);
+      if (owner && owner.warehouseId !== warehouse.warehouseId) {
+        return sendError(res, 409, 'DUPLICATE_WAREHOUSE',
+          `A warehouse named "${name.trim()}" already exists.`);
+      }
+    }
+
+    const updated = await warehouseService.updateWarehouse(warehouse, { name, location });
+    res.status(200).json(updated);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   listWarehouses,
-  createWarehouse
+  createWarehouse,
+  updateWarehouse
 };

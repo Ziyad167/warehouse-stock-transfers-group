@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "node --watch server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "zip": "node scripts/zip-lambda.js"
   },
   "keywords": [],
   "author": "",
@@ -14,9 +15,11 @@
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1177.0",
     "@aws-sdk/client-sns": "^3.1177.0",
+    "@aws-sdk/client-sqs": "^3.1178.0",
     "@aws-sdk/lib-dynamodb": "^3.1177.0",
     "cors": "^2.8.6",
     "dotenv": "^18.0.10",
-    "express": "^5.3.0"
+    "express": "^5.3.0",
+    "serverless-http": "^4.0.0"
   }
 }
