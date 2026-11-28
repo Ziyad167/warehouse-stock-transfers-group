@@ -5,11 +5,13 @@ const trackingRoutes = require('./routes/tracking');
 
 const app = express();
 
+// Logs every request: time, method and address
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} ${req.method} ${req.originalUrl}`);
   next();
 });
 
+// 8080 = frontend on http-server, 4566 = frontend served from S3 on Floci
 app.use(cors({
   origin: ['http://localhost:8080', 'http://localhost:4566']
 }));
@@ -19,6 +21,7 @@ app.get('/api/health', (req, res) => {
   res.status(200).json({ status: 'ok', environment: process.env.NODE_ENV || 'development' });
 });
 
+// Dispatch, receipt and movement history (see routes/tracking.js)
 app.use('/api', trackingRoutes);
 
 app.use((req, res) => {

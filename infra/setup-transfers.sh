@@ -1,16 +1,20 @@
 #!/usr/bin/env bash
+# Creates the Transfer Request service resources on Floci (local AWS)
 
+# Floci accepts these dummy test credentials (they are not real secrets)
 export AWS_ACCESS_KEY_ID=test
 export AWS_SECRET_ACCESS_KEY=test
 export AWS_DEFAULT_REGION=us-east-1
 ENDPOINT=http://localhost:4566
 
+# Stop here if Floci is not running (otherwise every command below fails)
 if ! aws --endpoint-url "$ENDPOINT" dynamodb list-tables > /dev/null 2>&1; then
   echo "ERROR: Floci is not answering on $ENDPOINT, so nothing was created."
   echo "Open Docker Desktop, then run:  docker compose -f infra/floci/docker-compose.yml up -d"
   exit 1
 fi
 
+# Runs an AWS CLI command against Floci
 awsl() {
   MSYS_NO_PATHCONV=1 aws --endpoint-url "$ENDPOINT" "$@"
 }

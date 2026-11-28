@@ -3,10 +3,12 @@ const warehouseService = require('../services/warehouseService');
 const itemService = require('../services/itemService');
 const alertService = require('../services/alertService');
 
+// Sends an error in the same shape everywhere: { error: { code, message } }
 function sendError(res, status, code, message) {
   return res.status(status).json({ error: { code, message } });
 }
 
+// Validates a new inventory record; returns an error message or null
 function validateNewRecord(warehouseId, itemId, quantity) {
   if (typeof warehouseId !== 'string' || warehouseId.trim() === '') {
     return 'warehouseId is required.';
@@ -20,6 +22,7 @@ function validateNewRecord(warehouseId, itemId, quantity) {
   return null;
 }
 
+// POST /api/inventory -> 201 with the new record, or 400 / 404 / 409 / 415
 async function createInventoryRecord(req, res, next) {
   try {
     if (!req.is('application/json')) {
@@ -43,6 +46,7 @@ async function createInventoryRecord(req, res, next) {
       return sendError(res, 404, 'ITEM_NOT_FOUND', 'Item not found.');
     }
 
+    // Business rule: one record per item per warehouse
     const existing = await inventoryService.findRecord(warehouseId, itemId);
     if (existing) {
       return sendError(res, 409, 'DUPLICATE_RECORD',
@@ -56,6 +60,7 @@ async function createInventoryRecord(req, res, next) {
   }
 }
 
+// GET /api/warehouses/:id/inventory -> 200 with the stock of one warehouse, or 404
 async function listWarehouseInventory(req, res, next) {
   try {
     const warehouseId = req.params.id;
@@ -84,6 +89,7 @@ async function listWarehouseInventory(req, res, next) {
     next(error);
   }
 }
+// Validates the availability question; returns an error message or null
 function validateAvailabilityQuery(warehouseId, itemId, quantity) {
   if (typeof warehouseId !== 'string' || warehouseId.trim() === '') {
     return 'warehouseId is required.';
@@ -97,6 +103,7 @@ function validateAvailabilityQuery(warehouseId, itemId, quantity) {
   return null;
 }
 
+// GET /api/inventory/availability?warehouseId=..&itemId=..&quantity=..
 async function checkAvailability(req, res, next) {
   try {
     const { warehouseId, itemId } = req.query;
@@ -122,6 +129,7 @@ async function checkAvailability(req, res, next) {
     next(error);
   }
 }
+// PATCH /api/inventory/:id with { "change": 10 } or { "change": -10 }
 async function updateStock(req, res, next) {
   try {
     if (!req.is('application/json')) {
@@ -140,6 +148,7 @@ async function updateStock(req, res, next) {
       return sendError(res, 404, 'INVENTORY_NOT_FOUND', 'Inventory record not found.');
     }
 
+    // Business rule: stock can never go below 0
     if (record.quantity + change < 0) {
       return sendError(res, 409, 'INSUFFICIENT_STOCK',
         `Only ${record.quantity} in stock, cannot remove ${-change}.`);
@@ -153,6 +162,7 @@ async function updateStock(req, res, next) {
     next(error);
   }
 }
+// GET /api/items/:id/stock -> 200 with the warehouses that hold this item, or 404
 async function listItemStock(req, res, next) {
   try {
     const item = await itemService.findItemById(req.params.id);
@@ -180,6 +190,7 @@ async function listItemStock(req, res, next) {
     next(error);
   }
 }
+// DELETE /api/inventory/:id -> 204 (the item leaves this warehouse), or 404 / 409
 async function deleteRecord(req, res, next) {
   try {
     const record = await inventoryService.findRecordById(req.params.id);
@@ -187,6 +198,7 @@ async function deleteRecord(req, res, next) {
       return sendError(res, 404, 'INVENTORY_NOT_FOUND', 'Inventory record not found.');
     }
 
+    // Business rule: only an empty record can be removed, so no stock disappears by mistake
     if (record.quantity !== 0) {
       return sendError(res, 409, 'NOT_EMPTY',
         `There are still ${record.quantity} in stock. Remove them first.`);

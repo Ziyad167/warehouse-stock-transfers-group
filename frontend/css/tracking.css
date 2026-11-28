@@ -1,3 +1,6 @@
+/* Extra styles for the tracking page. The base look comes from style.css. */
+
+/* Two balanced cards: shipments (left) | movement history (right) */
 .tracking-layout {
     grid-template-columns: minmax(0, 1.45fr) minmax(340px, 1fr);
     gap: 1.75rem;
@@ -12,6 +15,7 @@
     margin-top: 1.25rem;
 }
 
+/* Stage buttons: To dispatch | On the way | Received */
 .tabs {
     display: flex;
     flex-wrap: wrap;
@@ -56,6 +60,7 @@
     min-width: 210px;
 }
 
+/* One shipment in the list */
 .shipment-list {
     list-style: none;
     margin: 0;
@@ -94,6 +99,7 @@
     line-height: 1;
 }
 
+/* Dispatch button, or the receipt form, under the shipment */
 .shipment-action {
     grid-column: 1 / -1;
     display: flex;
@@ -131,6 +137,7 @@
     font-size: 0.92rem;
 }
 
+/* Movement history in the right card */
 .history-summary {
     margin: 0 0 0.5rem;
     color: var(--steel);

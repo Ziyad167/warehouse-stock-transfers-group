@@ -1,5 +1,7 @@
 const alertService = require('../services/alertService');
 
+// GET /api/alerts -> 200 with the new low-stock alerts (managers only),
+// or 503 if the SQS queue cannot be read (for example Floci is not running)
 async function listAlerts(req, res) {
   try {
     const alerts = await alertService.readAlerts();

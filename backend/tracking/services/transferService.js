@@ -1,13 +1,16 @@
 const { GetCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 const ddb = require('../db');
 
+// The transfer requests are created and approved by the Transfers service (Mostafa).
 const TABLE = 'TransferRequests';
 
+// Finds one transfer by its id (the table key); returns it or undefined
 async function findTransferById(transferId) {
   const result = await ddb.send(new GetCommand({ TableName: TABLE, Key: { transferId } }));
   return result.Item;
 }
 
+// Changes the status ONLY if the transfer still has the expected status.
 async function moveStatus(transferId, fromStatus, toStatus, fields) {
   const names = { '#status': 'status' };
   const values = { ':from': fromStatus, ':to': toStatus };
@@ -36,6 +39,7 @@ async function moveStatus(transferId, fromStatus, toStatus, fields) {
   }
 }
 
+// Puts a transfer back to its old status and removes the saved fields.
 async function undoStatus(transferId, currentStatus, oldStatus, fieldNames) {
   await ddb.send(new UpdateCommand({
     TableName: TABLE,

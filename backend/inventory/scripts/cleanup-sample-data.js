@@ -1,3 +1,5 @@
+// One-off clean-up of the test data on Floci (run inside backend/inventory):
+// node scripts/cleanup-sample-data.js
 require('dotenv').config({ quiet: true });
 const { ScanCommand, DeleteCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 const ddb = require('../db');

@@ -1,5 +1,6 @@
 const inventoryClient = require('../services/inventoryClient');
 
+// The whole app uses ONE login, run by the Inventory service.
 async function requireLogin(req, res, next) {
   try {
     const header = req.headers.authorization || '';
@@ -22,6 +23,7 @@ async function requireLogin(req, res, next) {
   }
 }
 
+// Lets the request continue only if the user's role is one of the allowed roles
 function requireRole(...allowedRoles) {
   return (req, res, next) => {
     if (!allowedRoles.includes(req.user.role)) {

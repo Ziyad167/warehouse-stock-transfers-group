@@ -6,6 +6,7 @@ function sendError(res, status, code, message) {
   return res.status(status).json({ error: { code, message } });
 }
 
+// POST /api/auth/login -> 200 with { token, username, role }, or 400 / 401 / 415
 async function login(req, res, next) {
   try {
     if (!req.is('application/json')) {
@@ -39,10 +40,12 @@ async function login(req, res, next) {
   }
 }
 
+// GET /api/auth/me -> 200 with the logged-in user
 function me(req, res) {
   res.status(200).json(req.user);
 }
 
+// POST /api/auth/logout -> 200, the token stops working
 async function logout(req, res, next) {
   try {
     await authService.deleteSession(req.token);

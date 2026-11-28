@@ -65,6 +65,7 @@ async function createItem(req, res, next) {
     next(error);
   }
 }
+// Validates the changes to an item: only the fields that are sent are checked
 function validateItemChanges({ name, sku, category, description }) {
   if (name === undefined && sku === undefined && category === undefined && description === undefined) {
     return 'Send at least one of: name, sku, category, description.';
@@ -87,6 +88,7 @@ function validateItemChanges({ name, sku, category, description }) {
   return null;
 }
 
+// PATCH /api/items/:id -> 200 with the changed item, or 400 / 404 / 409 / 415
 async function updateItem(req, res, next) {
   try {
     if (!req.is('application/json')) {
@@ -105,6 +107,7 @@ async function updateItem(req, res, next) {
       return sendError(res, 400, 'VALIDATION_ERROR', problem);
     }
 
+    // Business rule: a new SKU must not belong to another item
     if (sku !== undefined) {
       const owner = await itemService.findItemBySku(sku);
       if (owner && owner.itemId !== item.itemId) {
@@ -120,6 +123,7 @@ async function updateItem(req, res, next) {
   }
 }
 
+// DELETE /api/items/:id -> 204, or 404 / 409
 async function deleteItem(req, res, next) {
   try {
     const item = await itemService.findItemById(req.params.id);
@@ -127,6 +131,7 @@ async function deleteItem(req, res, next) {
       return sendError(res, 404, 'ITEM_NOT_FOUND', 'Item not found.');
     }
 
+    // Business rule: an item that a warehouse still holds cannot be deleted
     const records = await inventoryService.listByItem(item.itemId);
     if (records.length > 0) {
       const word = records.length === 1 ? 'warehouse' : 'warehouses';

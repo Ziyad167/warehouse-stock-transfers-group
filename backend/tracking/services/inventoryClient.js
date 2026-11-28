@@ -1,5 +1,7 @@
+// Talks to the Inventory service (Ziyad's part) over HTTP.
 const INVENTORY_API = process.env.INVENTORY_API;
 
+// Sends one request to the Inventory service and returns { status, body }
 async function callInventory(path, token, method = 'GET', data) {
   const options = { method, headers: { Authorization: `Bearer ${token}` } };
   if (data !== undefined) {
@@ -11,26 +13,31 @@ async function callInventory(path, token, method = 'GET', data) {
   return { status: response.status, body };
 }
 
+// GET /api/auth/me -> who owns this token; returns { username, role } or null
 async function getCurrentUser(token) {
   const { status, body } = await callInventory('/api/auth/me', token);
   return status === 200 ? body : null;
 }
 
+// GET /api/items/:id/stock -> { item, stock: [{ inventoryId, warehouseId, quantity, ..
 async function findItemStock(token, itemId) {
   const { status, body } = await callInventory(
     `/api/items/${encodeURIComponent(itemId)}/stock`, token);
   return status === 200 ? body : null;
 }
 
+// GET /api/warehouses -> all warehouses (used to show names in messages)
 async function listWarehouses(token) {
   const { status, body } = await callInventory('/api/warehouses', token);
   return status === 200 ? body : [];
 }
 
+// PATCH /api/inventory/:id with { change } -> adds or removes units.
 async function changeStock(token, inventoryId, change) {
   return callInventory(`/api/inventory/${encodeURIComponent(inventoryId)}`, token, 'PATCH', { change });
 }
 
+// POST /api/inventory -> first stock record of an item in a warehouse.
 async function createStockRecord(token, warehouseId, itemId, quantity) {
   return callInventory('/api/inventory', token, 'POST', { warehouseId, itemId, quantity });
 }

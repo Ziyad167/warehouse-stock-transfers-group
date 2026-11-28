@@ -1,3 +1,4 @@
+// Copies the starting data from the data/*.json files into the DynamoDB tables.
 require('dotenv').config({ quiet: true });
 const { PutCommand } = require('@aws-sdk/lib-dynamodb');
 const ddb = require('../db');

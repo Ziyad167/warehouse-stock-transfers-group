@@ -84,6 +84,7 @@
 </section>
 
 <main id="app" class="layout tracking-layout" hidden>
+    <!-- Dispatch and receipt messages that SNS put in the SQS queue -->
     <section id="messages-section" class="alerts" aria-labelledby="messages-title" hidden>
         <div class="alerts-head">
             <h2 id="messages-title">Shipment messages</h2>
@@ -129,6 +130,7 @@
     </aside>
 </main>
 
+<!-- config.js gives INVENTORY_API, transfers-config.js gives TRANSFERS_API, tracking-config.js gives TRACKING_API, common.js gives shared helpers. -->
 <script src="js/config.js" defer></script>
 <script src="js/transfers-config.js" defer></script>
 <script src="js/tracking-config.js" defer></script>

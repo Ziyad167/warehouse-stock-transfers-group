@@ -3,6 +3,7 @@ const { SQSClient, ReceiveMessageCommand, DeleteMessageCommand } = require('@aws
 const itemService = require('./itemService');
 const warehouseService = require('./warehouseService');
 
+// Lab 8: Amazon SNS on Floci sends the low-stock alerts.
 const awsConfig = {};
 if (process.env.AWS_ENDPOINT) {
   awsConfig.endpoint = process.env.AWS_ENDPOINT;
@@ -12,6 +13,8 @@ const sns = new SNSClient(awsConfig);
 
 const LOW_STOCK_LIMIT = Number(process.env.LOW_STOCK_LIMIT) || 10;
 
+// Business rule: after a stock change, if the quantity is below the limit,
+// publish a "low stock" message to the SNS topic so managers can restock in time.
 async function sendLowStockAlert(record) {
   if (record.quantity >= LOW_STOCK_LIMIT) {
     return false;
@@ -35,8 +38,10 @@ async function sendLowStockAlert(record) {
   }
 }
 
+// Lab 8: the SQS queue keeps the alerts that SNS sends, until a manager reads them
 const sqs = new SQSClient({ ...awsConfig, useQueueUrlAsEndpoint: false });
 
+// SNS puts its text inside a JSON "envelope" with Subject, Message and Timestamp
 function readSnsMessage(message) {
   try {
     const envelope = JSON.parse(message.Body);
@@ -51,6 +56,7 @@ function readSnsMessage(message) {
   }
 }
 
+// Reads the new low-stock alerts from the SQS queue (at most 10 at a time).
 async function readAlerts() {
   const queueUrl = process.env.LOW_STOCK_QUEUE_URL;
   const result = await sqs.send(new ReceiveMessageCommand({

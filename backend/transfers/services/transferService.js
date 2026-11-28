@@ -3,6 +3,7 @@ const ddb = require('../db');
 
 const TABLE = 'TransferRequests';
 
+// Saves a new transfer request with status PENDING and returns it
 async function createTransfer({ fromWarehouseId, toWarehouseId, itemId, quantity, note, requestedBy }) {
   const transfer = {
     transferId: `TRF-${Date.now()}`,
@@ -19,11 +20,13 @@ async function createTransfer({ fromWarehouseId, toWarehouseId, itemId, quantity
   return transfer;
 }
 
+// Finds one transfer by its id (the table key); returns it or undefined
 async function findTransferById(transferId) {
   const result = await ddb.send(new GetCommand({ TableName: TABLE, Key: { transferId } }));
   return result.Item;
 }
 
+// Returns the transfers, newest first
 async function listTransfers({ status, warehouseId }) {
   const conditions = [];
   const values = {};
@@ -49,6 +52,7 @@ async function listTransfers({ status, warehouseId }) {
   return result.Items.sort((a, b) => b.requestedAt.localeCompare(a.requestedAt));
 }
 
+// Approves or rejects a transfer
 async function decideTransfer(transferId, { status, decidedBy, reason }) {
   try {
     const result = await ddb.send(new UpdateCommand({
@@ -75,6 +79,7 @@ async function decideTransfer(transferId, { status, decidedBy, reason }) {
   }
 }
 
+// Deletes a request, but ONLY if it is still PENDING (a manager may be deciding it right now).
 async function deleteTransfer(transferId) {
   try {
     await ddb.send(new DeleteCommand({

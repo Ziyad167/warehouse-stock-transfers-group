@@ -1,8 +1,10 @@
 const transferService = require('../services/transferService');
 const inventoryClient = require('../services/inventoryClient');
 
+// DISPATCHED and RECEIVED are set later by the Tracking service (Saif)
 const STATUSES = ['PENDING', 'APPROVED', 'REJECTED', 'DISPATCHED', 'RECEIVED'];
 
+// Sends an error in the same shape everywhere: { error: { code, message } }
 function sendError(res, status, code, message) {
   return res.status(status).json({ error: { code, message } });
 }
@@ -11,6 +13,7 @@ function isFilledText(value) {
   return typeof value === 'string' && value.trim() !== '';
 }
 
+// Validates a new transfer request; returns an error message or null
 function validateNewTransfer({ fromWarehouseId, toWarehouseId, itemId, quantity, note }) {
   if (!isFilledText(fromWarehouseId)) {
     return 'fromWarehouseId is required.';
@@ -33,6 +36,7 @@ function validateNewTransfer({ fromWarehouseId, toWarehouseId, itemId, quantity,
   return null;
 }
 
+// POST /api/transfers -> 201 with the new PENDING request, or 400 / 404 / 415
 async function createTransfer(req, res, next) {
   try {
     if (!req.is('application/json')) {
@@ -66,6 +70,7 @@ async function createTransfer(req, res, next) {
   }
 }
 
+// GET /api/transfers?status=PENDING&warehouseId=WH-101 -> 200 with the matching requests
 async function listTransfers(req, res, next) {
   try {
     const status = req.query.status ? String(req.query.status).toUpperCase() : undefined;
@@ -82,6 +87,7 @@ async function listTransfers(req, res, next) {
   }
 }
 
+// GET /api/transfers/:id -> 200 with one request, or 404
 async function getTransfer(req, res, next) {
   try {
     const transfer = await transferService.findTransferById(req.params.id);
@@ -94,6 +100,8 @@ async function getTransfer(req, res, next) {
   }
 }
 
+// PATCH /api/transfers/:id/decision with { "decision": "approve" } or
+// { "decision": "reject", "reason": "..." } -> 200, or 400 / 403 / 404 / 409 / 415
 async function decideTransfer(req, res, next) {
   try {
     if (!req.is('application/json')) {
@@ -116,11 +124,13 @@ async function decideTransfer(req, res, next) {
       return sendError(res, 404, 'TRANSFER_NOT_FOUND', 'Transfer request not found.');
     }
 
+    // Business rule: a request can be decided only once
     if (transfer.status !== 'PENDING') {
       return sendError(res, 409, 'ALREADY_DECIDED',
         `This request is already ${transfer.status}.`);
     }
 
+    // Business rule: approve only if the source warehouse has enough stock right now
     if (decision === 'approve') {
       const stock = await inventoryClient.checkAvailability(
         req.token, transfer.fromWarehouseId, transfer.itemId, transfer.quantity);
@@ -145,6 +155,7 @@ async function decideTransfer(req, res, next) {
   }
 }
 
+// DELETE /api/transfers/:id -> 204 (the request is cancelled), or 403 / 404 / 409
 async function cancelTransfer(req, res, next) {
   try {
     const transfer = await transferService.findTransferById(req.params.id);
@@ -152,10 +163,12 @@ async function cancelTransfer(req, res, next) {
       return sendError(res, 404, 'TRANSFER_NOT_FOUND', 'Transfer request not found.');
     }
 
+    // Business rule: only the person who asked can cancel the request
     if (transfer.requestedBy !== req.user.username) {
       return sendError(res, 403, 'NOT_YOUR_REQUEST', 'Only the person who asked can cancel this request.');
     }
 
+    // Business rule: once a manager has decided, the request cannot be cancelled
     if (transfer.status !== 'PENDING') {
       return sendError(res, 409, 'ALREADY_DECIDED',
         `This request is already ${transfer.status}, so it cannot be cancelled.`);

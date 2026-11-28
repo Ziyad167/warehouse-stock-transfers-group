@@ -1,3 +1,4 @@
+// Builds backend/lambda.zip: the code Lambda runs.  Usage:  npm run zip
 const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
@@ -11,6 +12,7 @@ if (!fs.existsSync(path.join(root, 'node_modules', 'serverless-http'))) {
   process.exit(1);
 }
 
+// List every file to include
 const files = [];
 function collect(p) {
   const stat = fs.statSync(p);
@@ -25,6 +27,7 @@ function collect(p) {
 }
 include.forEach((name) => fs.existsSync(path.join(root, name)) && collect(path.join(root, name)));
 
+// Write a standard .zip file (no extra tools needed)
 const crcTable = Array.from({ length: 256 }, (_, n) => {
   let c = n;
   for (let k = 0; k < 8; k += 1) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;

@@ -1,3 +1,4 @@
+// Page elements
 const apiStatus = document.querySelector('#api-status');
 const toast = document.querySelector('#toast');
 const loginPanel = document.querySelector('#login-panel');
@@ -18,6 +19,7 @@ const approvalEmpty = document.querySelector('#approval-empty');
 const decisionList = document.querySelector('#decision-list');
 const decisionEmpty = document.querySelector('#decision-empty');
 
+// Data kept by the page
 let authToken = localStorage.getItem('authToken');
 let warehouses = [];
 let items = [];
@@ -25,6 +27,7 @@ let pending = [];
 let stockBySource = {};
 let toastTimer = null;
 
+// Send a request, read the JSON answer, and throw if the status is not 2xx.
 async function apiRequest(url, options = {}) {
   const headers = { ...(options.headers || {}) };
   if (authToken) {
@@ -51,6 +54,7 @@ async function apiRequest(url, options = {}) {
   return body;
 }
 
+// Shows a short message at the top of the screen for a few seconds ('good' or 'bad')
 function showToast(text, kind) {
   toast.textContent = text;
   toast.className = `toast ${kind}`;
@@ -61,11 +65,13 @@ function showToast(text, kind) {
   }, 5000);
 }
 
+// Shows a message under a form, green ('good') or red ('bad')
 function setFeedback(element, text, kind) {
   element.textContent = text;
   element.className = `feedback ${kind || ''}`;
 }
 
+// Puts one <option> into a <select> for each entry
 function fillSelect(select, entries) {
   select.replaceChildren();
   entries.forEach((entry) => {
@@ -90,6 +96,7 @@ function formatDate(isoText) {
   return new Date(isoText).toLocaleString();
 }
 
+// Makes a <p> with a class and a text
 function makeText(className, text) {
   const paragraph = document.createElement('p');
   paragraph.className = className;
@@ -97,6 +104,7 @@ function makeText(className, text) {
   return paragraph;
 }
 
+// GET /api/warehouses and GET /api/items on the Inventory service -> names and the filter
 async function loadChoices() {
   warehouses = await apiRequest(`${INVENTORY_API}/api/warehouses`);
   items = await apiRequest(`${INVENTORY_API}/api/items`);
@@ -109,6 +117,7 @@ async function loadChoices() {
   ]);
 }
 
+// GET /api/transfers on the Transfers service -> waiting requests and recent decisions.
 async function loadRequests() {
   try {
     const transfers = await apiRequest(`${TRANSFERS_API}/api/transfers`);
@@ -135,6 +144,8 @@ async function loadRequests() {
 
 filterSource.addEventListener('change', renderPending);
 
+// Waiting requests
+
 function renderPending() {
   const shown = pending.filter((transfer) =>
     !filterSource.value || transfer.fromWarehouseId === filterSource.value);
@@ -153,6 +164,8 @@ function renderPending() {
   });
 }
 
+// One request: what, from where to where, who asked, the stock at the source,
+// and the Approve / Reject controls
 function buildApproval(transfer) {
   const row = document.createElement('li');
   row.className = 'approval';
@@ -204,6 +217,7 @@ function buildApproval(transfer) {
   return row;
 }
 
+// PATCH /api/transfers/:id/decision -> approve or reject
 async function decide(transfer, decision, reason, buttons) {
   buttons.forEach((button) => {
     button.disabled = true;
@@ -228,6 +242,8 @@ async function decide(transfer, decision, reason, buttons) {
     });
   }
 }
+
+// Recent decisions
 
 function renderDecisions(decided) {
   const recent = decided
@@ -254,6 +270,7 @@ function renderDecisions(decided) {
   });
 }
 
+// Both services must answer: Inventory for login and stock, Transfers for the requests
 async function checkApis() {
   try {
     await apiRequest(`${INVENTORY_API}/api/health`);
@@ -266,6 +283,8 @@ async function checkApis() {
     apiStatus.className = 'api-status offline';
   }
 }
+
+// Login and logout (Inventory service)
 
 function clearLogin() {
   authToken = null;
@@ -282,6 +301,7 @@ function showLogin(text) {
   setFeedback(loginFeedback, text || '', text ? 'bad' : '');
 }
 
+// Managers see the requests; staff see a short message instead
 async function showApp(user) {
   loginPanel.hidden = true;
   userBar.hidden = false;
@@ -305,6 +325,7 @@ async function showApp(user) {
   await loadRequests();
 }
 
+// POST /api/auth/login on the Inventory service -> save the token, then show the page
 loginForm.addEventListener('submit', async (event) => {
   event.preventDefault();
 
@@ -336,6 +357,7 @@ loginForm.addEventListener('submit', async (event) => {
   }
 });
 
+// POST /api/auth/logout -> the token stops working everywhere
 logoutButton.addEventListener('click', async () => {
   try {
     await apiRequest(`${INVENTORY_API}/api/auth/logout`, { method: 'POST' });
@@ -347,6 +369,7 @@ logoutButton.addEventListener('click', async () => {
   showToast('Logged out.', 'good');
 });
 
+// When the page opens: if a token is saved, ask Inventory who we are
 async function startPage() {
   await checkApis();
 
