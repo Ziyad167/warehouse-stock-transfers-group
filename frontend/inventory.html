@@ -83,7 +83,6 @@
 </section>
 
 <main id="app" class="layout inventory-layout" hidden>
-    <!-- Managers only: low-stock alerts that SNS put in the SQS queue -->
     <section id="alerts-section" class="alerts" aria-labelledby="alerts-title" hidden>
         <div class="alerts-head">
             <h2 id="alerts-title">Low stock alerts</h2>
@@ -99,7 +98,6 @@
             <h1 id="warehouse-name"></h1>
             <div id="warehouse-summary" class="rack-summary"></div>
 
-            <!-- Managers only: change the warehouse name or city -->
             <button id="edit-warehouse-button" class="link-button" type="button" hidden>Edit name or city</button>
             <form id="warehouse-edit-form" class="inline-edit" hidden>
                 <div class="inline-fields">
@@ -176,9 +174,6 @@
     </aside>
 </main>
 
-<!-- config.js (Inventory API URL), transfers-config.js (Transfers API URL, for the
-     number on the Approvals tab) and common.js (shared helpers) must load before app.js.
-     defer keeps this order. -->
 <script src="js/config.js" defer></script>
 <script src="js/transfers-config.js" defer></script>
 <script src="js/common.js" defer></script>

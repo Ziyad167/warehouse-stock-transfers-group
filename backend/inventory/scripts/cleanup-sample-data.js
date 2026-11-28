@@ -1,10 +1,3 @@
-// One-off clean-up of the test data on Floci (run inside backend/inventory):
-//   node scripts/cleanup-sample-data.js
-//
-// 1) Duplicate warehouses: when two warehouses have the same name, the oldest one is
-//    kept. A newer copy is deleted ONLY if no stock record and no transfer request
-//    uses it; otherwise it is kept and reported, so no data is lost.
-// 2) Item names: items get the names written in data/items.json (ids and SKUs stay).
 require('dotenv').config({ quiet: true });
 const { ScanCommand, DeleteCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
 const ddb = require('../db');
@@ -15,7 +8,6 @@ async function scanAll(tableName) {
     const result = await ddb.send(new ScanCommand({ TableName: tableName }));
     return result.Items;
   } catch (error) {
-    // The TransferRequests table exists only after Mostafa's setup script
     if (error.name === 'ResourceNotFoundException') {
       return [];
     }

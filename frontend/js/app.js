@@ -1,7 +1,3 @@
-// INVENTORY_API and LOW_STOCK_LIMIT come from js/config.js, and pageUrl, chosenRole,
-// roleLabel, resetLoginSteps and hidePasswords from js/common.js (both loaded first).
-
-// ---------- Page elements ----------
 const apiStatus = document.querySelector('#api-status');
 const toast = document.querySelector('#toast');
 const loginPanel = document.querySelector('#login-panel');
@@ -42,22 +38,16 @@ const editWarehouseLocation = document.querySelector('#edit-warehouse-location')
 const editWarehouseCancel = document.querySelector('#edit-warehouse-cancel');
 const warehouseEditFeedback = document.querySelector('#warehouse-edit-feedback');
 
-// ---------- Data kept by the page ----------
-// Lab 8: the login token is kept in localStorage, so a page refresh stays logged in
 let authToken = localStorage.getItem('authToken');
-let allItems = [];      // every item, for the item lists
-let currentStock = [];  // stock records of the chosen warehouse
-let warehouses = [];    // every warehouse, for the bar on the left
+let allItems = [];
+let currentStock = [];
+let warehouses = [];
 let selectedWarehouseId = null;
-let currentUser = null;   // who is logged in: { username, role }
-let shownAlerts = [];        // low-stock alerts received since the page opened, newest first
-let currentWarehouse = null;  // the chosen warehouse: { warehouseId, name, location }
+let currentUser = null;
+let shownAlerts = [];
+let currentWarehouse = null;
 let toastTimer = null;
 
-// ---------- Helpers ----------
-
-// Send a request, read the JSON answer, and throw if the status is not 2xx.
-// If we are logged in, the token is added to every request.
 async function apiRequest(url, options = {}) {
   const headers = { ...(options.headers || {}) };
   if (authToken) {
@@ -71,14 +61,12 @@ async function apiRequest(url, options = {}) {
     body = await response.json();
   }
 
-  // 401 while logged in means the token is not valid any more: log in again
   if (response.status === 401 && authToken) {
     clearLogin();
     showLogin('Your session ended. Log in again.');
   }
 
   if (!response.ok) {
-    // Our API errors look like { error: { code, message } }
     const text = body?.error?.message || `Request failed (${response.status})`;
     throw new Error(text);
   }
@@ -86,8 +74,6 @@ async function apiRequest(url, options = {}) {
   return body;
 }
 
-// Shows a short message at the top of the screen for a few seconds.
-// kind is 'good', 'bad' or 'warn'
 function showToast(text, kind) {
   toast.textContent = text;
   toast.className = `toast ${kind}`;
@@ -98,13 +84,11 @@ function showToast(text, kind) {
   }, 5000);
 }
 
-// Shows a message under a form, green ('good') or red ('bad')
 function setFeedback(element, text, kind) {
   element.textContent = text;
   element.className = `feedback ${kind || ''}`;
 }
 
-// Puts one <option> into a <select> for each entry
 function fillSelect(select, entries) {
   select.replaceChildren();
   entries.forEach((entry) => {
@@ -115,7 +99,6 @@ function fillSelect(select, entries) {
   });
 }
 
-// Managers may change and delete things; staff may not
 function isManager() {
   return currentUser !== null && currentUser.role === 'manager';
 }
@@ -124,7 +107,6 @@ function itemLabel(item) {
   return `${item.name} (${item.sku})`;
 }
 
-// "OK", "Low" or "Out" for a quantity
 function stockStatus(quantity) {
   if (quantity === 0) {
     return 'out';
@@ -135,15 +117,10 @@ function stockStatus(quantity) {
   return 'ok';
 }
 
-// ---------- Warehouses and stock ----------
-
-// GET /api/warehouses -> fill the warehouse bar, then show the chosen warehouse's stock
 async function loadWarehouses() {
   try {
     warehouses = await apiRequest(`${INVENTORY_API}/api/warehouses`);
 
-    // Coming from the Transfers page with ?warehouse=WH-101 opens that warehouse;
-    // otherwise keep the current one, or start with the first
     const wanted = new URLSearchParams(window.location.search).get('warehouse');
     const exists = (id) => warehouses.some((warehouse) => warehouse.warehouseId === id);
     if (wanted && exists(wanted)) {
@@ -160,7 +137,6 @@ async function loadWarehouses() {
   }
 }
 
-// One button per warehouse in the bar on the left; the chosen one is highlighted
 function renderWarehouseBar() {
   warehouseList.replaceChildren();
   warehouses.forEach((warehouse) => {
@@ -184,7 +160,6 @@ function renderWarehouseBar() {
   });
 }
 
-// When the user picks another warehouse, show its stock
 function selectWarehouse(warehouseId) {
   selectedWarehouseId = warehouseId;
   setFeedback(checkResult, '');
@@ -193,7 +168,6 @@ function selectWarehouse(warehouseId) {
   loadStock();
 }
 
-// GET /api/warehouses/:id/inventory -> show the stock of the chosen warehouse
 async function loadStock() {
   try {
     const data = await apiRequest(
@@ -212,7 +186,6 @@ async function loadStock() {
   }
 }
 
-// Under the warehouse name: its city, then three counts (items, units, running low)
 function renderSummary(warehouse, stock) {
   let units = 0;
   let low = 0;
@@ -257,7 +230,6 @@ function renderStock(stock) {
     const row = document.createElement('tr');
     row.className = status;
 
-    // Item name and SKU
     const itemCell = document.createElement('td');
     const name = document.createElement('span');
     name.className = 'item-name';
@@ -265,28 +237,22 @@ function renderStock(stock) {
     const sku = document.createElement('span');
     sku.className = 'item-sku';
     sku.textContent = record.sku;
-    // Link to the Transfers page, with this warehouse and item already chosen
     const transferLink = document.createElement('a');
     transferLink.className = 'row-link';
     transferLink.href = pageUrl('transfers', { from: selectedWarehouseId, item: record.itemId });
     transferLink.textContent = 'Request a transfer';
     itemCell.append(name, sku, transferLink);
 
-    // Quantity in big numbers
     const qtyCell = document.createElement('td');
     qtyCell.className = 'qty';
     qtyCell.textContent = record.quantity;
 
-    // Status label
     const statusCell = document.createElement('td');
     const badge = document.createElement('span');
     badge.className = `status ${status}`;
     badge.textContent = status === 'ok' ? 'OK' : status === 'low' ? 'Low' : 'Out of stock';
     statusCell.append(badge);
 
-    // Units box with Add and Remove buttons. This corrects the stock of ONE warehouse
-    // (a delivery from a supplier, damaged goods). Moving stock between warehouses
-    // is done with a transfer: Transfers -> Approvals -> Tracking.
     const moveCell = document.createElement('td');
     moveCell.className = 'move-cell';
     const move = document.createElement('div');
@@ -310,7 +276,6 @@ function renderStock(stock) {
     move.append(units, add, remove);
     moveCell.append(move);
 
-    // An empty record can be taken out of this warehouse (managers only)
     if (record.quantity === 0 && isManager()) {
       const drop = document.createElement('button');
       drop.type = 'button';
@@ -325,7 +290,6 @@ function renderStock(stock) {
   });
 }
 
-// Add puts units in, Remove takes them out: PATCH /api/inventory/:id with { change }
 async function moveStock(record, unitsText, action) {
   const units = Number(unitsText);
   if (!Number.isInteger(units) || units < 1) {
@@ -355,7 +319,6 @@ async function moveStock(record, unitsText, action) {
   }
 }
 
-// DELETE /api/inventory/:id -> the item leaves this warehouse (only when 0 are left)
 async function removeRecord(record) {
   try {
     await apiRequest(`${INVENTORY_API}/api/inventory/${record.inventoryId}`, { method: 'DELETE' });
@@ -367,9 +330,6 @@ async function removeRecord(record) {
   }
 }
 
-// ---------- Low-stock alerts (managers) ----------
-
-// GET /api/alerts -> the new alerts that SNS put in the SQS queue since the last check
 async function loadAlerts() {
   if (!isManager()) {
     alertsSection.hidden = true;
@@ -380,7 +340,6 @@ async function loadAlerts() {
     shownAlerts = [...alerts.reverse(), ...shownAlerts].slice(0, 10);
     renderAlerts();
   } catch (error) {
-    // The queue cannot be read: the page still works without alerts
     console.error(error);
   }
 }
@@ -405,14 +364,11 @@ alertsClear.addEventListener('click', () => {
   renderAlerts();
 });
 
-// Check for new alerts every 20 seconds while a manager has the page open
 setInterval(() => {
   if (isManager() && !appSection.hidden) {
     loadAlerts();
   }
 }, 20000);
-
-// ---------- Change a warehouse (managers) ----------
 
 editWarehouseButton.addEventListener('click', () => {
   editWarehouseName.value = currentWarehouse.name;
@@ -428,7 +384,6 @@ editWarehouseCancel.addEventListener('click', () => {
   editWarehouseButton.hidden = false;
 });
 
-// PATCH /api/warehouses/:id -> save the new name and city
 warehouseEditForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   try {
@@ -448,9 +403,6 @@ warehouseEditForm.addEventListener('submit', async (event) => {
   }
 });
 
-// ---------- Items ----------
-
-// GET /api/items -> keep the list and fill the item choices
 async function loadItems() {
   try {
     allItems = await apiRequest(`${INVENTORY_API}/api/items`);
@@ -462,7 +414,6 @@ async function loadItems() {
   }
 }
 
-// The "Stock a new item here" list shows only items this warehouse does not hold yet
 function refreshAddChoices() {
   const stockedIds = currentStock.map((record) => record.itemId);
   const notStocked = allItems.filter((item) => !stockedIds.includes(item.itemId));
@@ -477,7 +428,6 @@ function refreshAddChoices() {
   }
 }
 
-// POST /api/inventory -> stock a new item in the chosen warehouse
 addForm.addEventListener('submit', async (event) => {
   event.preventDefault();
 
@@ -505,7 +455,6 @@ addForm.addEventListener('submit', async (event) => {
   }
 });
 
-// GET /api/inventory/availability -> can this warehouse send that many units?
 checkForm.addEventListener('submit', async (event) => {
   event.preventDefault();
 
@@ -529,7 +478,6 @@ checkForm.addEventListener('submit', async (event) => {
   }
 });
 
-// GET /api/items?search= -> show matching items
 searchForm.addEventListener('submit', async (event) => {
   event.preventDefault();
   await searchItems(searchText.value.trim());
@@ -574,7 +522,6 @@ async function searchItems(text) {
       head.append(info, button);
       line.append(head);
 
-      // Managers can change or delete an item
       if (isManager()) {
         line.append(buildItemActions(item, line));
       }
@@ -586,7 +533,6 @@ async function searchItems(text) {
   }
 }
 
-// "Edit" and "Delete" under an item in the search results (managers)
 function buildItemActions(item, line) {
   const actions = document.createElement('div');
   actions.className = 'result-actions';
@@ -611,7 +557,6 @@ function buildItemActions(item, line) {
   return actions;
 }
 
-// Small form to change the name, SKU, category and description of an item
 function buildItemEditForm(item, line) {
   const form = document.createElement('form');
   form.className = 'inline-edit';
@@ -653,7 +598,6 @@ function buildItemEditForm(item, line) {
   feedback.className = 'feedback';
   form.append(buttons, feedback);
 
-  // PATCH /api/items/:id -> save the changes
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
     try {
@@ -679,7 +623,6 @@ function buildItemEditForm(item, line) {
   return form;
 }
 
-// "Delete Work Gloves?" with Yes and Keep buttons
 function buildDeleteQuestion(item, line) {
   const box = document.createElement('div');
   box.className = 'result-actions delete-question';
@@ -698,7 +641,6 @@ function buildDeleteQuestion(item, line) {
   keep.textContent = 'Keep it';
   keep.addEventListener('click', () => box.replaceWith(buildItemActions(item, line)));
 
-  // DELETE /api/items/:id -> the item is deleted (only if no warehouse holds it)
   yes.addEventListener('click', async () => {
     try {
       await apiRequest(`${INVENTORY_API}/api/items/${item.itemId}`, { method: 'DELETE' });
@@ -716,7 +658,6 @@ function buildDeleteQuestion(item, line) {
   return box;
 }
 
-// GET /api/items/:id/stock -> shows every warehouse that holds this item
 async function toggleWhere(item, line, button) {
   const open = line.querySelector('.where');
   if (open) {
@@ -756,7 +697,6 @@ async function toggleWhere(item, line, button) {
       list.append(total);
     }
 
-    // Link to the Tracking page, which shows where this item has moved
     const history = document.createElement('a');
     history.className = 'row-link';
     history.href = pageUrl('tracking', { item: item.itemId });
@@ -774,9 +714,6 @@ async function toggleWhere(item, line, button) {
   }
 }
 
-// ---------- Connection status ----------
-
-// Shows in the top bar if the API is reachable
 async function checkApi() {
   try {
     const health = await apiRequest(`${INVENTORY_API}/api/health`);
@@ -789,9 +726,6 @@ async function checkApi() {
   }
 }
 
-// ---------- Login and logout ----------
-
-// Forgets the token in this browser
 function clearLogin() {
   authToken = null;
   currentUser = null;
@@ -800,7 +734,6 @@ function clearLogin() {
   localStorage.removeItem('authToken');
 }
 
-// Shows the login form and hides the app
 function showLogin(text) {
   appSection.hidden = true;
   userBar.hidden = true;
@@ -810,8 +743,6 @@ function showLogin(text) {
   setFeedback(loginFeedback, text || '', text ? 'bad' : '');
 }
 
-// Shows the app for a logged-in user; only managers see "Stock a new item here"
-// and the Approvals tab in the menu
 async function showApp(user) {
   currentUser = user;
   loginPanel.hidden = true;
@@ -828,7 +759,6 @@ async function showApp(user) {
   await searchItems('');
 }
 
-// POST /api/auth/login -> save the token, then show the app
 loginForm.addEventListener('submit', async (event) => {
   event.preventDefault();
 
@@ -860,7 +790,6 @@ loginForm.addEventListener('submit', async (event) => {
   }
 });
 
-// POST /api/auth/logout -> the token stops working on the server too
 logoutButton.addEventListener('click', async () => {
   try {
     await apiRequest(`${INVENTORY_API}/api/auth/logout`, { method: 'POST' });
@@ -872,7 +801,6 @@ logoutButton.addEventListener('click', async () => {
   showToast('Logged out.', 'good');
 });
 
-// When the page opens: if a token is saved, ask the server who we are
 async function startPage() {
   await checkApi();
 

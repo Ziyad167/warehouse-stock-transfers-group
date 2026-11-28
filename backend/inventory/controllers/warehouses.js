@@ -1,11 +1,9 @@
 const warehouseService = require('../services/warehouseService');
 
-// Sends an error in the same shape everywhere: { error: { code, message } }
 function sendError(res, status, code, message) {
   return res.status(status).json({ error: { code, message } });
 }
 
-// Checks one text field: it must be text, with a length between min and max
 function checkText(value, label, min, max) {
   if (typeof value !== 'string') {
     return `${label} is required.`;
@@ -17,13 +15,11 @@ function checkText(value, label, min, max) {
   return null;
 }
 
-// Validates the fields of a new warehouse; returns an error message or null
 function validateNewWarehouse(name, location) {
   return checkText(name, 'Name', 2, 100) ||
     checkText(location, 'Location', 2, 100);
 }
 
-// GET /api/warehouses -> 200 with the list of all warehouses
 async function listWarehouses(req, res, next) {
   try {
     const warehouses = await warehouseService.readWarehouses();
@@ -33,7 +29,6 @@ async function listWarehouses(req, res, next) {
   }
 }
 
-// POST /api/warehouses -> 201 with the new warehouse, or 400 / 409 / 415
 async function createWarehouse(req, res, next) {
   try {
     if (!req.is('application/json')) {
@@ -48,7 +43,6 @@ async function createWarehouse(req, res, next) {
       return sendError(res, 400, 'VALIDATION_ERROR', problem);
     }
 
-    // Business rule: two warehouses cannot have the same name
     if (await warehouseService.findWarehouseByName(name)) {
       return sendError(res, 409, 'DUPLICATE_WAREHOUSE',
         `A warehouse named "${name.trim()}" already exists.`);
@@ -61,8 +55,6 @@ async function createWarehouse(req, res, next) {
   }
 }
 
-// PATCH /api/warehouses/:id with { name, location } -> 200 with the changed warehouse,
-// or 400 / 404 / 409 / 415
 async function updateWarehouse(req, res, next) {
   try {
     if (!req.is('application/json')) {
@@ -85,7 +77,6 @@ async function updateWarehouse(req, res, next) {
       return sendError(res, 400, 'VALIDATION_ERROR', problem);
     }
 
-    // Business rule: two warehouses cannot have the same name
     if (name !== undefined) {
       const owner = await warehouseService.findWarehouseByName(name);
       if (owner && owner.warehouseId !== warehouse.warehouseId) {

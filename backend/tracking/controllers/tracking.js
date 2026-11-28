@@ -3,12 +3,10 @@ const movementService = require('../services/movementService');
 const inventoryClient = require('../services/inventoryClient');
 const notificationService = require('../services/notificationService');
 
-// Sends an error in the same shape everywhere: { error: { code, message } }
 function sendError(res, status, code, message) {
   return res.status(status).json({ error: { code, message } });
 }
 
-// Turns an error answer from the Inventory service into our own error answer
 function sendInventoryError(res, result) {
   const status = result.status >= 400 && result.status < 500 ? result.status : 502;
   const code = result.body?.error?.code || 'INVENTORY_ERROR';
@@ -16,7 +14,6 @@ function sendInventoryError(res, result) {
   return sendError(res, status, code, message);
 }
 
-// Looks up warehouse names, so messages say "Cairo Main Warehouse" and not "WH-101"
 async function warehouseNames(token) {
   const names = {};
   const warehouses = await inventoryClient.listWarehouses(token);
@@ -26,7 +23,6 @@ async function warehouseNames(token) {
   return names;
 }
 
-// Explains why a transfer cannot be dispatched or received in its current status
 function statusProblem(transfer) {
   const reasons = {
     PENDING: 'This transfer is not approved yet.',
@@ -38,8 +34,6 @@ function statusProblem(transfer) {
   return reasons[transfer.status] || `This transfer is ${transfer.status}.`;
 }
 
-// PATCH /api/transfers/:id/dispatch
-// -> 200 with the DISPATCHED transfer and the OUT movement, or 404 / 409
 async function dispatchTransfer(req, res, next) {
   try {
     const transfer = await transferService.findTransferById(req.params.id);
@@ -47,12 +41,10 @@ async function dispatchTransfer(req, res, next) {
       return sendError(res, 404, 'TRANSFER_NOT_FOUND', 'Transfer request not found.');
     }
 
-    // Business rule: only an APPROVED transfer can be dispatched, and only once
     if (transfer.status !== 'APPROVED') {
       return sendError(res, 409, 'WRONG_STATUS', statusProblem(transfer));
     }
 
-    // Business rule: the source warehouse must still have enough stock
     const itemStock = await inventoryClient.findItemStock(req.token, transfer.itemId);
     if (!itemStock) {
       return sendError(res, 404, 'ITEM_NOT_FOUND', 'The item of this transfer no longer exists.');
@@ -64,7 +56,6 @@ async function dispatchTransfer(req, res, next) {
         `The source warehouse has only ${available}, but ${transfer.quantity} must be dispatched.`);
     }
 
-    // 1) Mark it DISPATCHED (only works if it is still APPROVED)
     const dispatched = await transferService.moveStatus(transfer.transferId, 'APPROVED', 'DISPATCHED', {
       dispatchedBy: req.user.username,
       dispatchedAt: new Date().toISOString(),
@@ -74,16 +65,13 @@ async function dispatchTransfer(req, res, next) {
       return sendError(res, 409, 'WRONG_STATUS', 'Someone else dispatched this transfer just now.');
     }
 
-    // 2) Take the units out of the source warehouse (Inventory service)
     const change = await inventoryClient.changeStock(req.token, source.inventoryId, -transfer.quantity);
     if (change.status !== 200) {
-      // The stock did not change, so put the transfer back to APPROVED
       await transferService.undoStatus(transfer.transferId, 'DISPATCHED', 'APPROVED',
         ['dispatchedBy', 'dispatchedAt', 'dispatchedQuantity']);
       return sendInventoryError(res, change);
     }
 
-    // 3) Write it in the movement history
     const movement = await movementService.recordMovement({
       itemId: transfer.itemId,
       transferId: transfer.transferId,
@@ -93,7 +81,6 @@ async function dispatchTransfer(req, res, next) {
       performedBy: req.user.username
     });
 
-    // 4) Tell the warehouses (SNS on Floci)
     const names = await warehouseNames(req.token);
     const item = itemStock.item;
     const notificationSent = await notificationService.notify('Transfer dispatched',
@@ -112,7 +99,6 @@ async function dispatchTransfer(req, res, next) {
   }
 }
 
-// Validates the receipt; returns an error message or null
 function validateReceipt(receivedQuantity, dispatchedQuantity, note) {
   if (!Number.isInteger(receivedQuantity) || receivedQuantity < 0) {
     return 'receivedQuantity must be a whole number of 0 or more.';
@@ -123,15 +109,12 @@ function validateReceipt(receivedQuantity, dispatchedQuantity, note) {
   if (note !== undefined && (typeof note !== 'string' || note.length > 200)) {
     return 'Note must be text of at most 200 characters.';
   }
-  // Business rule: if units are missing, the receiver must say what happened
   if (receivedQuantity < dispatchedQuantity && (typeof note !== 'string' || note.trim().length < 3)) {
     return 'Some units are missing: add a note of 3 to 200 characters saying what happened.';
   }
   return null;
 }
 
-// PATCH /api/transfers/:id/receive with { "receivedQuantity": 10, "note": "..." }
-// -> 200 with the RECEIVED transfer and the IN movement, or 400 / 403 / 404 / 409 / 415
 async function receiveTransfer(req, res, next) {
   try {
     if (!req.is('application/json')) {
@@ -144,12 +127,10 @@ async function receiveTransfer(req, res, next) {
       return sendError(res, 404, 'TRANSFER_NOT_FOUND', 'Transfer request not found.');
     }
 
-    // Business rule: only a DISPATCHED transfer can be received, and only once
     if (transfer.status !== 'DISPATCHED') {
       return sendError(res, 409, 'WRONG_STATUS', statusProblem(transfer));
     }
 
-    // If receivedQuantity is not sent, everything that was dispatched arrived
     const dispatchedQuantity = transfer.dispatchedQuantity;
     const receivedQuantity = req.body.receivedQuantity === undefined
       ? dispatchedQuantity
@@ -161,7 +142,6 @@ async function receiveTransfer(req, res, next) {
       return sendError(res, 400, 'VALIDATION_ERROR', problem);
     }
 
-    // Business rule: the person who dispatched cannot also confirm the arrival
     if (transfer.dispatchedBy === req.user.username) {
       return sendError(res, 403, 'SAME_PERSON',
         'You dispatched this transfer, so someone else must confirm that it arrived.');
@@ -173,7 +153,6 @@ async function receiveTransfer(req, res, next) {
     }
     const destination = itemStock.stock.find((record) => record.warehouseId === transfer.toWarehouseId);
 
-    // 1) Mark it RECEIVED (only works if it is still DISPATCHED)
     const missingQuantity = dispatchedQuantity - receivedQuantity;
     const fields = {
       receivedBy: req.user.username,
@@ -189,14 +168,12 @@ async function receiveTransfer(req, res, next) {
       return sendError(res, 409, 'WRONG_STATUS', 'Someone else received this transfer just now.');
     }
 
-    // 2) Add the units that arrived to the destination warehouse (Inventory service)
     if (receivedQuantity > 0) {
       const result = destination
         ? await inventoryClient.changeStock(req.token, destination.inventoryId, receivedQuantity)
         : await inventoryClient.createStockRecord(req.token, transfer.toWarehouseId, transfer.itemId, receivedQuantity);
 
       if (result.status !== 200 && result.status !== 201) {
-        // The stock did not change, so put the transfer back to DISPATCHED
         await transferService.undoStatus(transfer.transferId, 'RECEIVED', 'DISPATCHED', Object.keys(fields));
         if (!destination && result.status === 403) {
           return sendError(res, 403, 'MANAGER_NEEDED',
@@ -206,7 +183,6 @@ async function receiveTransfer(req, res, next) {
       }
     }
 
-    // 3) Write it in the movement history
     const movement = await movementService.recordMovement({
       itemId: transfer.itemId,
       transferId: transfer.transferId,
@@ -217,7 +193,6 @@ async function receiveTransfer(req, res, next) {
       note: fields.receiptNote
     });
 
-    // 4) Tell the warehouses (SNS on Floci)
     const names = await warehouseNames(req.token);
     const item = itemStock.item;
     let message = `${receivedQuantity} of ${dispatchedQuantity} x ${item.name} (${item.sku}) arrived at ` +
@@ -233,7 +208,6 @@ async function receiveTransfer(req, res, next) {
   }
 }
 
-// GET /api/items/:id/movements -> 200 with the item and its movements (newest first), or 404
 async function listItemMovements(req, res, next) {
   try {
     const itemStock = await inventoryClient.findItemStock(req.token, req.params.id);
@@ -247,7 +221,6 @@ async function listItemMovements(req, res, next) {
   }
 }
 
-// GET /api/movements?warehouseId=WH-101&itemId=ITM-101 -> 200 with the movements (newest first)
 async function listMovements(req, res, next) {
   try {
     const warehouseId = req.query.warehouseId ? String(req.query.warehouseId) : undefined;
@@ -259,8 +232,6 @@ async function listMovements(req, res, next) {
   }
 }
 
-// GET /api/messages -> 200 with the new dispatch and receipt messages from SQS,
-// or 503 if the queue cannot be read
 async function listMessages(req, res) {
   try {
     const messages = await notificationService.readMessages();

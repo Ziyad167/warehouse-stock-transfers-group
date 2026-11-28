@@ -3,20 +3,17 @@ const ddb = require('../db');
 
 const TABLE = 'InventoryItems';
 
-// Returns all items, oldest first
 async function readItems() {
   const result = await ddb.send(new ScanCommand({ TableName: TABLE }));
   return result.Items.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
 }
 
-// Finds an item by its SKU (not case sensitive); returns it or undefined
 async function findItemBySku(sku) {
   const items = await readItems();
   const wanted = sku.trim().toUpperCase();
   return items.find((item) => item.sku === wanted);
 }
 
-// Returns the items whose name, SKU or category contains the search text
 async function searchItems(searchText) {
   const items = await readItems();
   const text = (searchText || '').trim().toLowerCase();
@@ -30,7 +27,6 @@ async function searchItems(searchText) {
   );
 }
 
-// Saves a new item and returns it
 async function createItem({ name, sku, category, description }) {
   const item = {
     itemId: `ITM-${Date.now()}`,
@@ -44,13 +40,11 @@ async function createItem({ name, sku, category, description }) {
   return item;
 }
 
-// Finds one item by its id (the table key); returns it or undefined
 async function findItemById(itemId) {
   const result = await ddb.send(new GetCommand({ TableName: TABLE, Key: { itemId } }));
   return result.Item;
 }
 
-// Saves the new name, SKU, category and description of an item and returns it
 async function updateItem(item, changes) {
   const updated = {
     ...item,
@@ -64,7 +58,6 @@ async function updateItem(item, changes) {
   return updated;
 }
 
-// Deletes one item by its id
 async function deleteItem(itemId) {
   await ddb.send(new DeleteCommand({ TableName: TABLE, Key: { itemId } }));
 }

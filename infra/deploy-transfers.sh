@@ -1,16 +1,6 @@
 #!/usr/bin/env bash
-# Deploys the Transfers backend on Floci as a Lambda function behind API Gateway (Labs 6 and 7):
-#   1) builds backend/transfers/lambda.zip (no .env inside)
-#   2) lets the IAM role be used by Lambda
-#   3) creates the Lambda function transfers-api (or updates its code)
-#   4) creates the HTTP API transfers-http-api with one route per endpoint
-#   5) writes the API address into frontend/js/transfers-config.js and uploads it to the S3 buckets
-# Run from the project root in Git Bash, after the three setup-*.sh scripts:
-#   bash infra/deploy-transfers.sh   (after deploy-inventory.sh)
-# Safe to run again after a code change: it updates the code and keeps the same address.
 set -e
 
-# Floci accepts these dummy test credentials (they are not real secrets)
 export AWS_ACCESS_KEY_ID=test
 export AWS_SECRET_ACCESS_KEY=test
 export AWS_DEFAULT_REGION=us-east-1
@@ -18,14 +8,12 @@ export AWS_PAGER=""
 ENDPOINT=http://localhost:4566
 ACCOUNT=000000000000
 
-# Stop here if Floci is not running (otherwise every command below fails)
 if ! aws --endpoint-url "$ENDPOINT" dynamodb list-tables > /dev/null 2>&1; then
   echo "ERROR: Floci is not answering on $ENDPOINT, so nothing was created."
   echo "Open Docker Desktop, then run:  docker compose -f infra/floci/docker-compose.yml up -d"
   exit 1
 fi
 
-# Runs an AWS CLI command against Floci
 awsl() {
   MSYS_NO_PATHCONV=1 aws --endpoint-url "$ENDPOINT" "$@"
 }
@@ -46,12 +34,10 @@ if [ -z "$INVENTORY_ID" ] || [ "$INVENTORY_ID" = "None" ]; then
 fi
 INVENTORY_INTERNAL="http://floci:4566/_aws/execute-api/$INVENTORY_ID/\$default"
 
-# Settings the function reads from process.env (no AWS keys: on Lambda the role gives them)
 ENV_JSON='{"Variables":{
   "NODE_ENV":"production",
   "INVENTORY_API":"'$INVENTORY_INTERNAL'"}}'
 
-# Every endpoint of the Transfers service. API Gateway answers 404 to anything else.
 ROUTES=(
   "GET /api/health"
   "GET /api/transfers" "POST /api/transfers"
@@ -94,8 +80,6 @@ if [ -z "$API_ID" ] || [ "$API_ID" = "None" ]; then
     --integration-uri arn:aws:lambda:us-east-1:$ACCOUNT:function:$FUNCTION \
     --query IntegrationId --output text)
 
-  # The browser asks OPTIONS first (CORS) because every request has an Authorization header,
-  # so each path also gets an OPTIONS route
   PATHS=$(printf '%s\n' "${ROUTES[@]}" | awk '{print $2}' | sort -u)
   for P in $PATHS; do ROUTES+=("OPTIONS $P"); done
   for ROUTE in "${ROUTES[@]}"; do
@@ -112,10 +96,7 @@ if [ -z "$API_ID" ] || [ "$API_ID" = "None" ]; then
 else
   echo "  API $API_NAME already exists: $API_ID"
 fi
-# The pages call the API on the same address as the S3 pages (localhost:4566), so no DNS name
-# and no CORS preflight across sites are needed:
 API_URL="http://localhost:4566/_aws/execute-api/$API_ID/\$default"
-# The same API by its API Gateway name (needs the DNS name localhost.floci.io to work)
 GATEWAY_URL=http://$API_ID.execute-api.localhost.floci.io:4566
 
 echo "=== 5) Point the pages at the API ==="

@@ -1,8 +1,5 @@
-// Talks to the Inventory service (Ziyad's part) over HTTP.
-// The user's own login token is passed on, so Inventory applies its own rules.
 const INVENTORY_API = process.env.INVENTORY_API;
 
-// Sends one request to the Inventory service and returns { status, body }
 async function callInventory(path, token) {
   const response = await fetch(`${INVENTORY_API}${path}`, {
     headers: { Authorization: `Bearer ${token}` }
@@ -11,27 +8,23 @@ async function callInventory(path, token) {
   return { status: response.status, body };
 }
 
-// GET /api/auth/me -> who owns this token; returns { username, role } or null
 async function getCurrentUser(token) {
   const { status, body } = await callInventory('/api/auth/me', token);
   return status === 200 ? body : null;
 }
 
-// GET /api/warehouses/:id/inventory -> returns the warehouse, or null if it does not exist
 async function findWarehouse(token, warehouseId) {
   const { status, body } = await callInventory(
     `/api/warehouses/${encodeURIComponent(warehouseId)}/inventory`, token);
   return status === 200 ? body.warehouse : null;
 }
 
-// GET /api/items/:id/stock -> returns the item, or null if it does not exist
 async function findItem(token, itemId) {
   const { status, body } = await callInventory(
     `/api/items/${encodeURIComponent(itemId)}/stock`, token);
   return status === 200 ? body.item : null;
 }
 
-// GET /api/inventory/availability -> { availableQuantity, isAvailable, ... }
 async function checkAvailability(token, warehouseId, itemId, quantity) {
   const query = `?warehouseId=${encodeURIComponent(warehouseId)}` +
     `&itemId=${encodeURIComponent(itemId)}&quantity=${quantity}`;

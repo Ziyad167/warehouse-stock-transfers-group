@@ -1,31 +1,20 @@
 #!/usr/bin/env bash
-# Creates the Inventory service resources on Floci (local AWS), like Lab 8:
-#   1) DynamoDB: 5 tables
-#   2) IAM: a role with a least-privilege policy
-#   3) S3: a bucket that serves the frontend
-#   4) SNS + SQS: low-stock alerts (SNS sends them, the SQS queue keeps them)
-# Run from the project root, in Git Bash:   bash infra/setup-floci.sh
-# Safe to run again: anything that already exists is skipped.
 
-# Floci accepts these dummy test credentials (they are not real secrets)
 export AWS_ACCESS_KEY_ID=test
 export AWS_SECRET_ACCESS_KEY=test
 export AWS_DEFAULT_REGION=us-east-1
 ENDPOINT=http://localhost:4566
 
-# Stop here if Floci is not running (otherwise every command below fails)
 if ! aws --endpoint-url "$ENDPOINT" dynamodb list-tables > /dev/null 2>&1; then
   echo "ERROR: Floci is not answering on $ENDPOINT, so nothing was created."
   echo "Open Docker Desktop, then run:  docker compose -f infra/floci/docker-compose.yml up -d"
   exit 1
 fi
 
-# Runs an AWS CLI command against Floci
 awsl() {
   MSYS_NO_PATHCONV=1 aws --endpoint-url "$ENDPOINT" "$@"
 }
 
-# Creates one DynamoDB table whose key is one text attribute
 create_table() {
   awsl dynamodb create-table --table-name "$1" \
     --attribute-definitions AttributeName="$2",AttributeType=S \

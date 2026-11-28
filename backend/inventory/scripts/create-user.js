@@ -1,6 +1,3 @@
-// Creates a user from the terminal (run inside backend/inventory):
-//   node scripts/create-user.js <username> <password> <role>
-// role must be manager or staff
 require('dotenv').config({ quiet: true });
 const authService = require('../services/authService');
 
