@@ -1,0 +1,200 @@
+/* Extra styles for the tracking page. The base look comes from style.css. */
+
+/* Two balanced cards: shipments (left) | movement history (right) */
+.tracking-layout {
+    grid-template-columns: minmax(0, 1.45fr) minmax(340px, 1fr);
+    gap: 1.75rem;
+}
+
+.shipment-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 1.25rem;
+}
+
+/* Stage buttons: To dispatch | On the way | Received */
+.tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+.tab {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.95rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: #fff;
+    color: var(--slate);
+    font-weight: 600;
+}
+.tab:hover {
+    border-color: var(--steel);
+}
+.tab[aria-pressed="true"] {
+    border-color: var(--slate);
+    background: var(--slate);
+    color: #fff;
+}
+.tab-count {
+    min-width: 1.5rem;
+    padding: 0 0.4rem;
+    border-radius: 999px;
+    background: var(--concrete);
+    color: var(--slate);
+    font-size: 0.82rem;
+    text-align: center;
+}
+.tab[aria-pressed="true"] .tab-count {
+    background: #3d5163;
+    color: #fff;
+}
+
+.shipment-filter {
+    display: grid;
+    gap: 0.3rem;
+    min-width: 210px;
+}
+
+/* One shipment in the list */
+.shipment-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.shipment {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.5rem 1.5rem;
+    padding: 1.1rem 1.75rem;
+    border-bottom: 1px solid var(--concrete);
+}
+.shipment-route {
+    margin: 0;
+    font-family: var(--sign-font);
+    font-size: 1.45rem;
+    font-weight: 600;
+    line-height: 1.2;
+}
+.shipment-what {
+    margin: 0.15rem 0 0;
+}
+.shipment-meta {
+    margin: 0.25rem 0 0;
+    font-size: 0.9rem;
+    color: var(--steel);
+}
+.shipment-side {
+    text-align: right;
+}
+.shipment-qty {
+    margin: 0 0 0.3rem;
+    font-family: var(--sign-font);
+    font-size: 2rem;
+    font-weight: 600;
+    line-height: 1;
+}
+
+/* Dispatch button, or the receipt form, under the shipment */
+.shipment-action {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: end;
+}
+.shipment-action button {
+    padding: 0.55rem 1rem;
+}
+.shipment-action > input {
+    flex: 1;
+    min-width: 200px;
+}
+.received-field {
+    display: grid;
+    gap: 0.2rem;
+    font-size: 0.85rem;
+    color: var(--steel);
+}
+.received-field input {
+    width: 7rem;
+}
+.shipment-hint {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--steel);
+}
+.shipment-missing {
+    grid-column: 1 / -1;
+    margin: 0;
+    padding: 0.5rem 0.8rem;
+    border-left: 4px solid var(--safety);
+    background: #fff8df;
+    font-size: 0.92rem;
+}
+
+/* Movement history in the right card */
+.history-summary {
+    margin: 0 0 0.5rem;
+    color: var(--steel);
+}
+.movement-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+.movement {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 0 0.75rem 0.8rem;
+    border-bottom: 1px solid var(--concrete);
+    border-left: 4px solid var(--line);
+}
+.movement-out {
+    border-left-color: var(--steel);
+}
+.movement-in {
+    border-left-color: var(--go);
+}
+.movement-place {
+    margin: 0;
+    font-weight: 600;
+}
+.movement-item,
+.movement-meta,
+.movement-note {
+    margin: 0.1rem 0 0;
+    font-size: 0.88rem;
+    color: var(--steel);
+}
+.movement-qty {
+    margin: 0;
+    font-family: var(--sign-font);
+    font-size: 1.6rem;
+    font-weight: 700;
+    line-height: 1.1;
+}
+.movement-in .movement-qty {
+    color: var(--go);
+}
+
+@media (max-width: 760px) {
+    .tracking-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .shipment {
+        grid-template-columns: 1fr;
+        padding: 1rem;
+    }
+    .shipment-side {
+        text-align: left;
+    }
+}

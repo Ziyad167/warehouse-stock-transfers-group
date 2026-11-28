@@ -1,0 +1,167 @@
+@inventoryUrl = http://localhost:3001
+@transfersUrl = http://localhost:3002
+@baseUrl = http://localhost:3003
+@managerToken = {{loginManager.response.body.$.token}}
+@staffToken = {{loginStaff.response.body.$.token}}
+@transferId = {{createTransfer.response.body.$.transferId}}
+
+### ---------- LOGIN (through the Inventory service) ----------
+### Run L01 and L02 first: the other tests use their tokens.
+
+### L01 Log in as manager (expect 200 with a token)
+# @name loginManager
+POST {{inventoryUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "cloud123",
+  "password": "Cloud123456"
+}
+
+### L02 Log in as staff (expect 200 with a token)
+# @name loginStaff
+POST {{inventoryUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "staff12",
+  "password": "Staff12344"
+}
+
+### ---------- PREPARE A TRANSFER (Transfers service) ----------
+
+### K00 Health check (expect 200)
+GET {{baseUrl}}/api/health
+
+### K01 Staff asks to move 10 boxes from Cairo to Alexandria (expect 201, PENDING)
+# @name createTransfer
+POST {{transfersUrl}}/api/transfers
+Authorization: Bearer {{staffToken}}
+Content-Type: application/json
+
+{
+  "fromWarehouseId": "WH-101",
+  "toWarehouseId": "WH-1795391950080",
+  "itemId": "ITM-102",
+  "quantity": 10
+}
+
+### K02 Dispatch before it is approved (expect 409 WRONG_STATUS "not approved yet")
+PATCH {{baseUrl}}/api/transfers/{{transferId}}/dispatch
+Authorization: Bearer {{staffToken}}
+
+### K03 Manager approves it (expect 200, APPROVED)
+PATCH {{transfersUrl}}/api/transfers/{{transferId}}/decision
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "decision": "approve"
+}
+
+### ---------- DISPATCH ----------
+
+### D01 No token (expect 401 UNAUTHORIZED)
+PATCH {{baseUrl}}/api/transfers/{{transferId}}/dispatch
+
+### D02 Transfer that does not exist (expect 404 TRANSFER_NOT_FOUND)
+PATCH {{baseUrl}}/api/transfers/TRF-0000/dispatch
+Authorization: Bearer {{staffToken}}
+
+### D03 Staff dispatches it (expect 200, DISPATCHED, an OUT movement, Cairo stock goes down by 10)
+PATCH {{baseUrl}}/api/transfers/{{transferId}}/dispatch
+Authorization: Bearer {{staffToken}}
+
+### D04 Dispatch it again (expect 409 WRONG_STATUS "already dispatched")
+PATCH {{baseUrl}}/api/transfers/{{transferId}}/dispatch
+Authorization: Bearer {{staffToken}}
+
+### ---------- RECEIVE ----------
+
+### V01 The same person who dispatched it tries to receive it (expect 403 SAME_PERSON)
+PATCH {{baseUrl}}/api/transfers/{{transferId}}/receive
+Authorization: Bearer {{staffToken}}
+Content-Type: application/json
+
+{
+  "receivedQuantity": 10
+}
+
+### V02 More than was dispatched (expect 400 VALIDATION_ERROR)
+PATCH {{baseUrl}}/api/transfers/{{transferId}}/receive
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "receivedQuantity": 11
+}
+
+### V03 Units missing but no note (expect 400 VALIDATION_ERROR)
+PATCH {{baseUrl}}/api/transfers/{{transferId}}/receive
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "receivedQuantity": 8
+}
+
+### V04 Body is not JSON (expect 415 UNSUPPORTED_MEDIA_TYPE)
+PATCH {{baseUrl}}/api/transfers/{{transferId}}/receive
+Authorization: Bearer {{managerToken}}
+Content-Type: text/plain
+
+8 boxes
+
+### V05 Manager receives 8 of 10 with a note (expect 200, RECEIVED, missingQuantity 2, an IN movement)
+PATCH {{baseUrl}}/api/transfers/{{transferId}}/receive
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "receivedQuantity": 8,
+  "note": "Two boxes crushed in the truck"
+}
+
+### V06 Receive it again (expect 409 WRONG_STATUS "already received")
+PATCH {{baseUrl}}/api/transfers/{{transferId}}/receive
+Authorization: Bearer {{managerToken}}
+Content-Type: application/json
+
+{
+  "receivedQuantity": 8,
+  "note": "Again"
+}
+
+### ---------- MOVEMENT HISTORY ----------
+
+### H01 History of one item (expect 200: the OUT and IN movements, newest first)
+GET {{baseUrl}}/api/items/ITM-102/movements
+Authorization: Bearer {{staffToken}}
+
+### H02 Item that does not exist (expect 404 ITEM_NOT_FOUND)
+GET {{baseUrl}}/api/items/ITM-0000/movements
+Authorization: Bearer {{staffToken}}
+
+### H03 Every movement in Alexandria (expect 200: only IN movements)
+GET {{baseUrl}}/api/movements?warehouseId=WH-1795391950080
+Authorization: Bearer {{staffToken}}
+
+### H04 No token (expect 401 UNAUTHORIZED)
+GET {{baseUrl}}/api/movements
+
+### H05 The transfer now shows RECEIVED on the Transfers service (expect 200)
+GET {{transfersUrl}}/api/transfers?status=RECEIVED
+Authorization: Bearer {{managerToken}}
+
+### ---------- SHIPMENT MESSAGES (SNS -> SQS) ----------
+
+### M01 Read the dispatch and receipt messages of D03 and V05 (expect 200, two messages)
+GET {{baseUrl}}/api/messages
+Authorization: Bearer {{staffToken}}
+
+### M02 Read again: each message is delivered once (expect 200, empty list)
+GET {{baseUrl}}/api/messages
+Authorization: Bearer {{staffToken}}
+
+### M03 No token (expect 401 UNAUTHORIZED)
+GET {{baseUrl}}/api/messages
