@@ -1,5 +1,3 @@
-/* Extra styles for the transfers page. The base look comes from style.css. */
-
 .filters {
     display: flex;
     flex-wrap: wrap;
@@ -59,7 +57,6 @@
     line-height: 1;
 }
 
-/* Progress bar under each request: Requested > Approved > Dispatched > Received */
 .progress {
     grid-column: 1 / -1;
     display: grid;
@@ -99,14 +96,12 @@
     opacity: 0.4;
 }
 
-/* What happens next, with a link to the page where it happens */
 .transfer-next {
     grid-column: 1 / -1;
     margin: 0.2rem 0 0;
     font-size: 0.92rem;
 }
 
-/* Status labels: grey = waiting, green = approved, red = rejected */
 .status.pending {
     background: #e3e8ec;
     color: var(--slate);
@@ -139,9 +134,6 @@
     }
 }
 
-/* ---------- Approvals page (managers only) ---------- */
-
-/* Waiting requests (left) | recent decisions (right) */
 .approvals-layout {
     grid-template-columns: minmax(0, 1.45fr) minmax(320px, 1fr);
     gap: 1.75rem;
@@ -205,7 +197,6 @@
     padding: 0.5rem 0.9rem;
 }
 
-/* Recent decisions in the right card */
 .decision-list {
     list-style: none;
     margin: 0;
@@ -230,7 +221,6 @@
     color: var(--steel);
 }
 
-/* Staff opening the Approvals page see a short message and this button */
 .manager-only-link {
     display: block;
     padding: 0.6rem 1rem;
@@ -246,7 +236,6 @@
     }
 }
 
-/* "Cancel request" next to the next-step line */
 .transfer-next .cancel-request {
     margin-left: 0.5rem;
 }

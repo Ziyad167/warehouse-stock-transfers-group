@@ -1,14 +1,10 @@
 const { PutCommand, ScanCommand } = require('@aws-sdk/lib-dynamodb');
 const ddb = require('../db');
 
-// One stock movement = one change of an item's stock in one warehouse, caused by a transfer.
-// movementType is OUT (dispatched from the source) or IN (received at the destination).
 const TABLE = 'StockMovements';
 
-// Counter so two movements saved in the same millisecond still get different ids
 let counter = 0;
 
-// Saves a movement and returns it
 async function recordMovement({ itemId, transferId, warehouseId, movementType, quantity, performedBy, note }) {
   counter = counter + 1;
   const movement = {
@@ -28,7 +24,6 @@ async function recordMovement({ itemId, transferId, warehouseId, movementType, q
   return movement;
 }
 
-// Returns movements, newest first. Optional filters: itemId and warehouseId.
 async function listMovements({ itemId, warehouseId }) {
   const conditions = [];
   const values = {};

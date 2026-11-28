@@ -83,7 +83,6 @@
     <p id="login-feedback" class="feedback" role="alert"></p>
 </section>
 
-<!-- Shown to staff: approving is a manager's job -->
 <section id="manager-only" class="login" hidden>
     <h1>Managers only</h1>
     <p class="login-hint">Only a manager can approve or reject transfer requests.
@@ -119,8 +118,6 @@
     </aside>
 </main>
 
-<!-- config.js gives INVENTORY_API, transfers-config.js gives TRANSFERS_API,
-     common.js gives shared helpers. All must load before approvals.js. defer keeps this order. -->
 <script src="js/config.js" defer></script>
 <script src="js/transfers-config.js" defer></script>
 <script src="js/common.js" defer></script>

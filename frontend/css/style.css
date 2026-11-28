@@ -1,14 +1,12 @@
-/* Warehouse rack-sign look: slate, concrete grey, and safety yellow
-   used only to mark low stock (like hazard tape in a warehouse). */
 :root {
-    --slate: #22303c;      /* top bar, main text */
-    --steel: #5b6b79;      /* secondary text */
-    --concrete: #e6eaed;   /* page background */
-    --line: #c9d1d8;       /* borders and dividers */
-    --label: #ffffff;      /* panels */
-    --safety: #f5b800;     /* low stock only */
-    --go: #2e7d4f;         /* success */
-    --stop: #b3261e;       /* errors, out of stock */
+    --slate: #22303c;
+    --steel: #5b6b79;
+    --concrete: #e6eaed;
+    --line: #c9d1d8;
+    --label: #ffffff;
+    --safety: #f5b800;
+    --go: #2e7d4f;
+    --stop: #b3261e;
     --sign-font: 'Barlow Condensed', 'Arial Narrow', Arial, sans-serif;
     --text-font: 'Barlow', Arial, sans-serif;
 }
@@ -49,7 +47,6 @@ h1, h2, h3 {
     outline-offset: 2px;
 }
 
-/* ---------- Top bar ---------- */
 .topbar {
     display: flex;
     flex-wrap: wrap;
@@ -83,7 +80,6 @@ h1, h2, h3 {
     color: #b8c3cc;
 }
 
-/* Navigation between the Inventory and Transfers pages */
 .main-nav {
     display: flex;
     gap: 0.25rem;
@@ -106,7 +102,6 @@ h1, h2, h3 {
     background: rgba(255, 255, 255, 0.14);
     box-shadow: inset 0 -3px 0 #fff;
 }
-/* Number of requests waiting on the Approvals tab (managers) */
 .nav-count {
     display: inline-block;
     min-width: 1.3rem;
@@ -120,7 +115,6 @@ h1, h2, h3 {
     line-height: 1.3rem;
     text-align: center;
 }
-/* Before login there is no nav, so the status still goes to the right */
 .main-nav[hidden] + .api-status {
     margin-left: auto;
 }
@@ -150,7 +144,6 @@ h1, h2, h3 {
     font-size: 0.95rem;
 }
 
-/* ---------- Buttons and fields ---------- */
 button {
     font: inherit;
     font-weight: 600;
@@ -217,7 +210,6 @@ label {
 .feedback.good { color: var(--go); }
 .feedback.bad { color: var(--stop); }
 
-/* ---------- Toast (messages at the top of the screen) ---------- */
 .toast {
     position: fixed;
     top: 1rem;
@@ -236,7 +228,6 @@ label {
 .toast.bad { border-left: 6px solid #ff6b5e; }
 .toast.warn { border-left: 6px solid var(--safety); }
 
-/* ---------- Login ---------- */
 .login {
     width: min(600px, 92%);
     margin: 4rem auto;
@@ -248,7 +239,6 @@ label {
 .login h1 {
     font-size: 2.2rem;
 }
-/* Step 2 (username and password) only needs a narrow card */
 .login:has(#credentials-step:not([hidden])) {
     width: min(420px, 92%);
 }
@@ -257,7 +247,6 @@ label {
     color: var(--steel);
 }
 
-/* ---------- Main layout ---------- */
 .layout {
     display: grid;
     grid-template-columns: minmax(0, 1.8fr) minmax(300px, 1fr);
@@ -267,7 +256,6 @@ label {
     align-items: start;
 }
 
-/* The stock "rack": the warehouse sign and its stock table */
 .rack {
     background: var(--label);
     border-radius: 4px;
@@ -334,7 +322,6 @@ label {
     font-variant-numeric: tabular-nums;
 }
 
-/* Low stock rows get a safety-yellow edge, like hazard tape */
 .stock-table tr.low td:first-child {
     box-shadow: inset 6px 0 0 var(--safety);
 }
@@ -359,7 +346,6 @@ label {
     background: #f8dcd9;
     color: var(--stop);
 }
-/* Transfer on its way between warehouses (set by the Tracking service) */
 .status.dispatched {
     background: #dfe9f3;
     color: #2b5579;
@@ -381,8 +367,6 @@ label {
     color: var(--steel);
 }
 
-/* ---------- Tools column: one sheet, sections divided by lines ---------- */
-/* The control bar on the right stays in view while the stock list scrolls */
 .tools {
     position: sticky;
     top: 1rem;
@@ -465,7 +449,6 @@ label {
     font-weight: 600;
 }
 
-/* Link inside a row to an action on the other page */
 .row-link {
     display: inline-block;
     margin-top: 0.25rem;
@@ -473,7 +456,6 @@ label {
     color: var(--slate);
 }
 
-/* ---------- Login: step 1 role buttons, step 2 form ---------- */
 .role-options {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -497,7 +479,6 @@ label {
     border-color: var(--steel);
     box-shadow: 0 4px 14px rgba(34, 48, 60, 0.08);
 }
-/* The chosen role: dark border, light tint and the yellow check */
 .role-card[aria-checked="true"] {
     border-color: var(--slate);
     background: #f3f6f8;
@@ -617,7 +598,6 @@ label {
     margin-bottom: 1.25rem;
 }
 
-/* Password field with an eye button inside it */
 .password-field {
     position: relative;
 }
@@ -663,7 +643,6 @@ label {
     display: block;
 }
 
-/* ---------- Inventory: warehouse card (left) | check stock and tools (right) ---------- */
 .inventory-layout {
     grid-template-columns: minmax(0, 1.45fr) minmax(340px, 1fr);
     gap: 1.75rem;
@@ -679,7 +658,6 @@ label {
     overflow: hidden;
 }
 
-/* Tinted header on both cards so the two halves line up */
 .rack-sign,
 .tool-primary {
     background: #f3f6f8;
@@ -696,7 +674,6 @@ label {
     font-size: 1.9rem;
 }
 
-/* Warehouse choice: pills above the warehouse name */
 .warehouse-switch {
     margin-bottom: 1rem;
 }
@@ -738,7 +715,6 @@ label {
     color: #cdd6dd;
 }
 
-/* City and the three counts under the warehouse name */
 .rack-place {
     margin: 0.2rem 0 0;
     color: var(--steel);
@@ -775,7 +751,6 @@ label {
     background: #fff8df;
 }
 
-/* ---------- Small screens ---------- */
 @media (max-width: 760px) {
     .layout {
         grid-template-columns: 1fr;
@@ -789,7 +764,6 @@ label {
     }
 }
 
-/* Phones: the menu takes its own line and the four tabs share it */
 @media (max-width: 520px) {
     .main-nav {
         order: 3;
@@ -869,7 +843,6 @@ label {
         transition: none !important;
     }
 }
-/* ---------- Change and delete (managers) ---------- */
 button.link-button {
     padding: 0;
     border: 0;
@@ -934,7 +907,6 @@ button.button-secondary.danger {
     }
 }
 
-/* ---------- Alerts and messages from SNS / SQS (top of the page) ---------- */
 .alerts {
     grid-column: 1 / -1;
     padding: 1rem 1.4rem;

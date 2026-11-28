@@ -1,8 +1,3 @@
-// INVENTORY_API comes from js/config.js, TRANSFERS_API from js/transfers-config.js,
-// and pageUrl, setupNavForUser, refreshApprovalCount, chosenRole, roleLabel, resetLoginSteps
-// and hidePasswords from js/common.js.
-
-// ---------- Page elements ----------
 const apiStatus = document.querySelector('#api-status');
 const toast = document.querySelector('#toast');
 const loginPanel = document.querySelector('#login-panel');
@@ -29,18 +24,12 @@ const requestQuantity = document.querySelector('#request-quantity');
 const requestNote = document.querySelector('#request-note');
 const requestFeedback = document.querySelector('#request-feedback');
 
-// ---------- Data kept by the page ----------
-// Same login as the inventory page: the token is kept in localStorage under the same name
 let authToken = localStorage.getItem('authToken');
 let currentUser = null;
 let warehouses = [];
 let items = [];
 let toastTimer = null;
 
-// ---------- Helpers ----------
-
-// Send a request, read the JSON answer, and throw if the status is not 2xx.
-// If we are logged in, the token is added to every request.
 async function apiRequest(url, options = {}) {
   const headers = { ...(options.headers || {}) };
   if (authToken) {
@@ -54,14 +43,12 @@ async function apiRequest(url, options = {}) {
     body = await response.json();
   }
 
-  // 401 while logged in means the token is not valid any more: log in again
   if (response.status === 401 && authToken) {
     clearLogin();
     showLogin('Your session ended. Log in again.');
   }
 
   if (!response.ok) {
-    // Our APIs answer errors as { error: { code, message } }
     const text = body?.error?.message || `Request failed (${response.status})`;
     throw new Error(text);
   }
@@ -69,7 +56,6 @@ async function apiRequest(url, options = {}) {
   return body;
 }
 
-// Shows a short message at the top of the screen for a few seconds ('good' or 'bad')
 function showToast(text, kind) {
   toast.textContent = text;
   toast.className = `toast ${kind}`;
@@ -80,13 +66,11 @@ function showToast(text, kind) {
   }, 5000);
 }
 
-// Shows a message under a form, green ('good') or red ('bad')
 function setFeedback(element, text, kind) {
   element.textContent = text;
   element.className = `feedback ${kind || ''}`;
 }
 
-// Puts one <option> into a <select> for each entry
 function fillSelect(select, entries) {
   select.replaceChildren();
   entries.forEach((entry) => {
@@ -97,7 +81,6 @@ function fillSelect(select, entries) {
   });
 }
 
-// Turns ids into names for the list
 function warehouseName(warehouseId) {
   const warehouse = warehouses.find((one) => one.warehouseId === warehouseId);
   return warehouse ? warehouse.name : warehouseId;
@@ -112,16 +95,12 @@ function formatDate(isoText) {
   return new Date(isoText).toLocaleString();
 }
 
-// "27 Nov, 20:40": short enough for the progress bar
 function shortDate(isoText) {
   return new Date(isoText).toLocaleString([], {
     day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
   });
 }
 
-// ---------- Warehouses and items (from the Inventory service) ----------
-
-// GET /api/warehouses and GET /api/items -> fill the form and the filter
 async function loadChoices() {
   try {
     warehouses = await apiRequest(`${INVENTORY_API}/api/warehouses`);
@@ -146,14 +125,12 @@ async function loadChoices() {
   }
 }
 
-// Coming from the Inventory page with ?from=WH-101&item=ITM-101 fills the form
 function prefillFromLink() {
   const params = new URLSearchParams(window.location.search);
   const from = params.get('from');
   const item = params.get('item');
   if (from && warehouses.some((warehouse) => warehouse.warehouseId === from)) {
     fromWarehouse.value = from;
-    // Pick a different destination than the source
     const other = warehouses.find((warehouse) => warehouse.warehouseId !== from);
     if (other) {
       toWarehouse.value = other.warehouseId;
@@ -171,8 +148,6 @@ function itemLabelText(item) {
   return `${item.name} (${item.sku})`;
 }
 
-// Shows how many units the chosen source warehouse has of the chosen item
-// (GET /api/inventory/availability on the Inventory service)
 async function showStockHint() {
   stockHint.className = 'stock-hint';
   if (!fromWarehouse.value || !requestItem.value) {
@@ -197,9 +172,6 @@ async function showStockHint() {
 fromWarehouse.addEventListener('change', showStockHint);
 requestItem.addEventListener('change', showStockHint);
 
-// ---------- Transfer requests (from the Transfers service) ----------
-
-// GET /api/transfers?status=&warehouseId= -> show the list
 async function loadTransfers() {
   try {
     const query = new URLSearchParams();
@@ -232,7 +204,6 @@ function renderTransfers(transfers) {
     const row = document.createElement('li');
     row.className = 'transfer';
 
-    // Left side: route, item and note
     const main = document.createElement('div');
     main.append(
       makeText('transfer-route', `${warehouseName(transfer.fromWarehouseId)} to ${warehouseName(transfer.toWarehouseId)}`),
@@ -242,7 +213,6 @@ function renderTransfers(transfers) {
       main.append(makeText('transfer-note', `Note: ${transfer.note}`));
     }
 
-    // Right side: units and status label
     const side = document.createElement('div');
     side.className = 'transfer-side';
     const badge = document.createElement('span');
@@ -254,13 +224,11 @@ function renderTransfers(transfers) {
     badge.textContent = labels[transfer.status];
     side.append(makeText('transfer-qty', transfer.quantity), badge);
 
-    // Under both: the progress bar and what happens next
     row.append(main, side, buildProgress(transfer), buildNextStep(transfer));
     transferList.append(row);
   });
 }
 
-// Makes a <p> with a class and a text
 function makeText(className, text) {
   const paragraph = document.createElement('p');
   paragraph.className = className;
@@ -268,7 +236,6 @@ function makeText(className, text) {
   return paragraph;
 }
 
-// The four steps of every transfer, in order, and where each one is saved
 const STEPS = [
   { label: 'Requested', by: 'requestedBy', at: 'requestedAt' },
   { label: 'Approved', by: 'decidedBy', at: 'decidedAt' },
@@ -276,8 +243,6 @@ const STEPS = [
   { label: 'Received', by: 'receivedBy', at: 'receivedAt' }
 ];
 
-// Requested > Approved > Dispatched > Received, with who did each step and when.
-// Done steps are green, the next step is yellow, a rejected request stops at "Rejected".
 function buildProgress(transfer) {
   const list = document.createElement('ol');
   list.className = 'progress';
@@ -315,7 +280,6 @@ function buildProgress(transfer) {
   return list;
 }
 
-// One line under the progress bar: what happens next, and a link to the page where it happens
 function buildNextStep(transfer) {
   const line = document.createElement('p');
   line.className = 'transfer-next';
@@ -334,7 +298,6 @@ function buildNextStep(transfer) {
     } else {
       line.append('Next: a manager approves or rejects it on the Approvals page.');
     }
-    // The person who asked can cancel the request until a manager decides
     if (transfer.requestedBy === currentUser.username) {
       const cancel = document.createElement('button');
       cancel.type = 'button';
@@ -359,7 +322,6 @@ function buildNextStep(transfer) {
   return line;
 }
 
-// DELETE /api/transfers/:id -> cancel your own request while it is still waiting
 async function cancelRequest(transfer, button) {
   button.disabled = true;
   try {
@@ -374,7 +336,6 @@ async function cancelRequest(transfer, button) {
   }
 }
 
-// POST /api/transfers -> send a new request
 requestForm.addEventListener('submit', async (event) => {
   event.preventDefault();
 
@@ -407,9 +368,6 @@ requestForm.addEventListener('submit', async (event) => {
   }
 });
 
-// ---------- Connection status ----------
-
-// Both services must answer: Inventory for login and stock, Transfers for requests
 async function checkApis() {
   try {
     await apiRequest(`${INVENTORY_API}/api/health`);
@@ -422,8 +380,6 @@ async function checkApis() {
     apiStatus.className = 'api-status offline';
   }
 }
-
-// ---------- Login and logout (Inventory service) ----------
 
 function clearLogin() {
   authToken = null;
@@ -453,7 +409,6 @@ async function showApp(user) {
   await loadTransfers();
 }
 
-// POST /api/auth/login on the Inventory service -> save the token, then show the app
 loginForm.addEventListener('submit', async (event) => {
   event.preventDefault();
 
@@ -485,7 +440,6 @@ loginForm.addEventListener('submit', async (event) => {
   }
 });
 
-// POST /api/auth/logout -> the token stops working everywhere
 logoutButton.addEventListener('click', async () => {
   try {
     await apiRequest(`${INVENTORY_API}/api/auth/logout`, { method: 'POST' });
@@ -497,7 +451,6 @@ logoutButton.addEventListener('click', async () => {
   showToast('Logged out.', 'good');
 });
 
-// When the page opens: if a token is saved, ask Inventory who we are
 async function startPage() {
   await checkApis();
 

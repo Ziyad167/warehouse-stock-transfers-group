@@ -1,6 +1,5 @@
 const authService = require('../services/authService');
 
-// Lets the request continue only if it has a valid "Authorization: Bearer <token>" header
 async function requireLogin(req, res, next) {
   try {
     const header = req.headers.authorization || '';
@@ -13,7 +12,6 @@ async function requireLogin(req, res, next) {
       });
     }
 
-    // Save who is logged in, so the next functions can use it
     req.user = user;
     req.token = token;
     next();
@@ -22,7 +20,6 @@ async function requireLogin(req, res, next) {
   }
 }
 
-// Lets the request continue only if the user's role is one of the allowed roles
 function requireRole(...allowedRoles) {
   return (req, res, next) => {
     if (!allowedRoles.includes(req.user.role)) {

@@ -1,6 +1,3 @@
-// Copies the starting data from the data/*.json files into the DynamoDB tables.
-// Run once after creating the tables (inside backend/inventory):
-//   node scripts/seed.js
 require('dotenv').config({ quiet: true });
 const { PutCommand } = require('@aws-sdk/lib-dynamodb');
 const ddb = require('../db');

@@ -1,8 +1,3 @@
-// INVENTORY_API comes from js/config.js, TRANSFERS_API from js/transfers-config.js,
-// TRACKING_API from js/tracking-config.js, and pageUrl, setupNavForUser, chosenRole,
-// roleLabel, resetLoginSteps and hidePasswords from js/common.js.
-
-// ---------- Page elements ----------
 const apiStatus = document.querySelector('#api-status');
 const toast = document.querySelector('#toast');
 const loginPanel = document.querySelector('#login-panel');
@@ -27,29 +22,22 @@ const messagesSection = document.querySelector('#messages-section');
 const messagesList = document.querySelector('#messages-list');
 const messagesClear = document.querySelector('#messages-clear');
 
-// ---------- Data kept by the page ----------
-// Same login as the other pages: the token is kept in localStorage under the same name
 let authToken = localStorage.getItem('authToken');
 let currentUser = null;
 let warehouses = [];
 let items = [];
 let transfers = [];
 let stage = 'APPROVED';
-let shownMessages = [];  // SNS messages received since the page opened, newest first
+let shownMessages = [];
 let toastTimer = null;
 
-// What each stage shows when it has nothing in it: what has to happen first
 const EMPTY_TEXT = {
   APPROVED: 'Nothing to dispatch. A transfer appears here after a manager approves it on the Approvals page.',
   DISPATCHED: 'Nothing is on the way. Dispatch an approved transfer first, from "To dispatch".',
   RECEIVED: 'Nothing has been received yet. Transfers appear here after the destination confirms what arrived.'
 };
-let firstLoad = true;  // on the first load, open the first stage that has something in it
+let firstLoad = true;
 
-// ---------- Helpers ----------
-
-// Send a request, read the JSON answer, and throw if the status is not 2xx.
-// If we are logged in, the token is added to every request.
 async function apiRequest(url, options = {}) {
   const headers = { ...(options.headers || {}) };
   if (authToken) {
@@ -63,14 +51,12 @@ async function apiRequest(url, options = {}) {
     body = await response.json();
   }
 
-  // 401 while logged in means the token is not valid any more: log in again
   if (response.status === 401 && authToken) {
     clearLogin();
     showLogin('Your session ended. Log in again.');
   }
 
   if (!response.ok) {
-    // Our APIs answer errors as { error: { code, message } }
     const text = body?.error?.message || `Request failed (${response.status})`;
     throw new Error(text);
   }
@@ -78,7 +64,6 @@ async function apiRequest(url, options = {}) {
   return body;
 }
 
-// Shows a short message at the top of the screen for a few seconds ('good', 'bad' or 'warn')
 function showToast(text, kind) {
   toast.textContent = text;
   toast.className = `toast ${kind}`;
@@ -89,13 +74,11 @@ function showToast(text, kind) {
   }, 5000);
 }
 
-// Shows a message under a form, green ('good') or red ('bad')
 function setFeedback(element, text, kind) {
   element.textContent = text;
   element.className = `feedback ${kind || ''}`;
 }
 
-// Puts one <option> into a <select> for each entry
 function fillSelect(select, entries) {
   select.replaceChildren();
   entries.forEach((entry) => {
@@ -106,7 +89,6 @@ function fillSelect(select, entries) {
   });
 }
 
-// Turns ids into names
 function warehouseName(warehouseId) {
   const warehouse = warehouses.find((one) => one.warehouseId === warehouseId);
   return warehouse ? warehouse.name : warehouseId;
@@ -121,7 +103,6 @@ function formatDate(isoText) {
   return new Date(isoText).toLocaleString();
 }
 
-// Makes a <p> with a class and a text
 function makeText(className, text) {
   const paragraph = document.createElement('p');
   paragraph.className = className;
@@ -129,9 +110,6 @@ function makeText(className, text) {
   return paragraph;
 }
 
-// ---------- Warehouses and items (from the Inventory service) ----------
-
-// GET /api/warehouses and GET /api/items -> fill the filters
 async function loadChoices() {
   try {
     warehouses = await apiRequest(`${INVENTORY_API}/api/warehouses`);
@@ -148,7 +126,6 @@ async function loadChoices() {
       ...items.map((item) => ({ value: item.itemId, label: `${item.name} (${item.sku})` }))
     ]);
 
-    // Coming from the Inventory page with ?item=ITM-101 shows that item's history
     const wanted = new URLSearchParams(window.location.search).get('item');
     if (wanted && items.some((item) => item.itemId === wanted)) {
       historyItem.value = wanted;
@@ -159,9 +136,6 @@ async function loadChoices() {
   }
 }
 
-// ---------- Shipments (transfer requests from the Transfers service) ----------
-
-// GET /api/transfers on the Transfers service -> keep the list, then show the chosen stage
 async function loadShipments() {
   try {
     transfers = await apiRequest(`${TRANSFERS_API}/api/transfers`);
@@ -179,14 +153,12 @@ async function loadShipments() {
   }
 }
 
-// A transfer matches the warehouse filter if it leaves from or goes to that warehouse
 function matchesWarehouse(transfer) {
   const wanted = shipmentWarehouse.value;
   return !wanted || transfer.fromWarehouseId === wanted || transfer.toWarehouseId === wanted;
 }
 
 function renderShipments() {
-  // Numbers on the three stage buttons
   ['APPROVED', 'DISPATCHED', 'RECEIVED'].forEach((one) => {
     const count = transfers.filter((transfer) => transfer.status === one && matchesWarehouse(transfer)).length;
     document.querySelector(`#count-${one}`).textContent = count;
@@ -196,7 +168,6 @@ function renderShipments() {
   shipmentList.replaceChildren();
   shipmentEmpty.hidden = shown.length > 0;
   shipmentEmpty.replaceChildren(EMPTY_TEXT[stage]);
-  // Managers get a link to the page where transfers are approved
   if (stage === 'APPROVED' && currentUser.role === 'manager') {
     const link = document.createElement('a');
     link.className = 'row-link';
@@ -210,7 +181,6 @@ function renderShipments() {
   });
 }
 
-// One shipment: route, item, who did what, and the action for its stage
 function buildShipment(transfer) {
   const row = document.createElement('li');
   row.className = 'shipment';
@@ -230,7 +200,6 @@ function buildShipment(transfer) {
       `Received by ${transfer.receivedBy} on ${formatDate(transfer.receivedAt)}`));
   }
 
-  // Right side: units and status label
   const side = document.createElement('div');
   side.className = 'shipment-side';
   const qty = makeText('shipment-qty', transfer.status === 'RECEIVED'
@@ -257,7 +226,6 @@ function buildShipment(transfer) {
   return row;
 }
 
-// Dispatch button for an approved transfer
 function buildDispatch(transfer) {
   const box = document.createElement('div');
   box.className = 'shipment-action';
@@ -270,8 +238,6 @@ function buildDispatch(transfer) {
   return box;
 }
 
-// "Units received", note and Confirm button for a transfer on its way.
-// The person who dispatched it cannot confirm it, so they see a short message instead.
 function buildReceive(transfer) {
   const box = document.createElement('div');
   box.className = 'shipment-action';
@@ -312,7 +278,6 @@ function buildReceive(transfer) {
   return box;
 }
 
-// PATCH /api/transfers/:id/dispatch on the Tracking service
 async function dispatch(transfer, button) {
   button.disabled = true;
   try {
@@ -336,7 +301,6 @@ async function dispatch(transfer, button) {
   }
 }
 
-// PATCH /api/transfers/:id/receive on the Tracking service
 async function receive(transfer, receivedText, note, button) {
   const receivedQuantity = Number(receivedText);
   const payload = { receivedQuantity };
@@ -369,7 +333,6 @@ async function receive(transfer, receivedText, note, button) {
   }
 }
 
-// Marks the chosen stage button
 function showStage() {
   stageTabs.forEach((tab) => {
     tab.setAttribute('aria-pressed', String(tab.dataset.stage === stage));
@@ -385,9 +348,6 @@ stageTabs.forEach((tab) => {
 });
 shipmentWarehouse.addEventListener('change', renderShipments);
 
-// ---------- Movement history (Tracking service) ----------
-
-// One item chosen: GET /api/items/:id/movements. Otherwise: GET /api/movements
 async function loadHistory() {
   try {
     let movements;
@@ -456,16 +416,12 @@ function renderHistory(movements) {
   });
 }
 
-// ---------- Shipment messages (SNS -> SQS) ----------
-
-// GET /api/messages -> the new dispatch and receipt messages since the last check
 async function loadMessages() {
   try {
     const messages = await apiRequest(`${TRACKING_API}/api/messages`);
     shownMessages = [...messages.reverse(), ...shownMessages].slice(0, 10);
     renderMessages();
   } catch (error) {
-    // The queue cannot be read: the page still works without messages
     console.error(error);
   }
 }
@@ -490,17 +446,12 @@ messagesClear.addEventListener('click', () => {
   renderMessages();
 });
 
-// Check for new messages every 20 seconds while the page is open
 setInterval(() => {
   if (currentUser && !appSection.hidden) {
     loadMessages();
   }
 }, 20000);
 
-// ---------- Connection status ----------
-
-// All three services must answer: Inventory for login, Transfers for the requests,
-// Tracking for dispatch, receipt and history
 async function checkApis() {
   try {
     await apiRequest(`${INVENTORY_API}/api/health`);
@@ -514,8 +465,6 @@ async function checkApis() {
     apiStatus.className = 'api-status offline';
   }
 }
-
-// ---------- Login and logout (Inventory service) ----------
 
 function clearLogin() {
   authToken = null;
@@ -549,7 +498,6 @@ async function showApp(user) {
   await loadMessages();
 }
 
-// POST /api/auth/login on the Inventory service -> save the token, then show the app
 loginForm.addEventListener('submit', async (event) => {
   event.preventDefault();
 
@@ -581,7 +529,6 @@ loginForm.addEventListener('submit', async (event) => {
   }
 });
 
-// POST /api/auth/logout -> the token stops working everywhere
 logoutButton.addEventListener('click', async () => {
   try {
     await apiRequest(`${INVENTORY_API}/api/auth/logout`, { method: 'POST' });
@@ -593,7 +540,6 @@ logoutButton.addEventListener('click', async () => {
   showToast('Logged out.', 'good');
 });
 
-// When the page opens: if a token is saved, ask Inventory who we are
 async function startPage() {
   await checkApis();
 

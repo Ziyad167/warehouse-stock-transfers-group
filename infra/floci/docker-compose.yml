@@ -9,15 +9,14 @@ services:
   floci:
     image: floci/floci:latest
     container_name: floci
-    restart: unless-stopped                  # start again when Docker Desktop starts
+    restart: unless-stopped
     ports:
-      - "127.0.0.1:4566:4566"                  # only your own PC can reach Floci
+      - "127.0.0.1:4566:4566"
     environment:
       FLOCI_HOSTNAME: floci
-      FLOCI_STORAGE_MODE: persistent           # keep tables and functions after a restart
+      FLOCI_STORAGE_MODE: persistent
       FLOCI_STORAGE_PERSISTENT_PATH: /app/data
       FLOCI_SERVICES_UI_BIND_ADDRESS: "127.0.0.1"
-      # Use Floci Dash (AWS-Console style) as the web console
       FLOCI_BASE_URL: http://floci:4566
       FLOCI_SERVICES_UI_IMAGE: ghcr.io/ofsazib/floci-dash:latest
       FLOCI_SERVICES_UI_CONTAINER_NAME: floci-dash
@@ -25,7 +24,7 @@ services:
       FLOCI_SERVICES_UI_STATUS_PATH: /api/healthz
     volumes:
       - floci-data:/app/data
-      - /var/run/docker.sock:/var/run/docker.sock   # lets Floci run Lambda functions
+      - /var/run/docker.sock:/var/run/docker.sock
 
 volumes:
   floci-data:
