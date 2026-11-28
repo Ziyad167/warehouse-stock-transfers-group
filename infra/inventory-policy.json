@@ -22,7 +22,11 @@
     {
       "Sid": "FrontendBucketOnly",
       "Effect": "Allow",
-      "Action": ["s3:GetObject", "s3:PutObject", "s3:ListBucket"],
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:ListBucket"
+      ],
       "Resource": [
         "arn:aws:s3:::inventory-frontend",
         "arn:aws:s3:::inventory-frontend/*"
@@ -31,8 +35,29 @@
     {
       "Sid": "LowStockTopicOnly",
       "Effect": "Allow",
-      "Action": ["sns:Publish"],
+      "Action": [
+        "sns:Publish"
+      ],
       "Resource": "arn:aws:sns:us-east-1:000000000000:inventory-low-stock-topic"
+    },
+    {
+      "Sid": "LowStockQueueReadOnly",
+      "Effect": "Allow",
+      "Action": [
+        "sqs:ReceiveMessage",
+        "sqs:DeleteMessage"
+      ],
+      "Resource": "arn:aws:sqs:us-east-1:000000000000:inventory-low-stock-alerts"
+    },
+    {
+      "Sid": "LambdaLogs",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+      ],
+      "Resource": "*"
     }
   ]
 }

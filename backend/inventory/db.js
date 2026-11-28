@@ -1,16 +1,15 @@
 const { DynamoDBClient } = require('@aws-sdk/client-dynamodb');
 const { DynamoDBDocumentClient } = require('@aws-sdk/lib-dynamodb');
 
-// Lab 8: the AWS SDK talks to Floci (local AWS) instead of real AWS.
-// All the settings come from the .env file.
-const client = new DynamoDBClient({
-  endpoint: process.env.AWS_ENDPOINT,
-  region: process.env.AWS_REGION,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
-  }
-});
+// On the PC: AWS_ENDPOINT in .env sends the SDK to Floci; the keys and the region
+// are also in .env, and the SDK reads them by itself.
+// On Lambda: AWS_ENDPOINT is not set. Lambda gives the region and the role's keys,
+// and Floci gives the endpoint, so the SDK uses its defaults (as in Lab 7).
+const config = {};
+if (process.env.AWS_ENDPOINT) {
+  config.endpoint = process.env.AWS_ENDPOINT;
+}
+const client = new DynamoDBClient(config);
 
 // The Document client lets us use normal JavaScript objects with DynamoDB
 const ddb = DynamoDBDocumentClient.from(client);

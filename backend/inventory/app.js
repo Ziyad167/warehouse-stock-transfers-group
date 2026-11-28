@@ -5,6 +5,7 @@ const warehouseRoutes = require('./routes/warehouses');
 const itemRoutes = require('./routes/items');
 const inventoryRoutes = require('./routes/inventory');
 const authRoutes = require('./routes/auth');
+const alertRoutes = require('./routes/alerts');
 const app = express();
 app.use((req, res, next) => {
   console.log(`${new Date().toISOString()} ${req.method} ${req.originalUrl}`);
@@ -22,6 +23,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/warehouses', warehouseRoutes);
 app.use('/api/items', itemRoutes);
 app.use('/api/inventory', inventoryRoutes);
+app.use('/api/alerts', alertRoutes);
 app.use((req, res) => {
   res.status(404).json({
     error: { code: 'ROUTE_NOT_FOUND', message: 'Route not found.' }

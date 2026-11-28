@@ -1,4 +1,4 @@
-const { ScanCommand, PutCommand, GetCommand } = require('@aws-sdk/lib-dynamodb');
+const { ScanCommand, PutCommand, GetCommand, DeleteCommand } = require('@aws-sdk/lib-dynamodb');
 const ddb = require('../db');
 
 const TABLE = 'InventoryItems';
@@ -50,4 +50,25 @@ async function findItemById(itemId) {
   return result.Item;
 }
 
-module.exports = { readItems, findItemBySku, searchItems, createItem, findItemById };
+// Saves the new name, SKU, category and description of an item and returns it
+async function updateItem(item, changes) {
+  const updated = {
+    ...item,
+    name: changes.name !== undefined ? changes.name.trim() : item.name,
+    sku: changes.sku !== undefined ? changes.sku.trim().toUpperCase() : item.sku,
+    category: changes.category !== undefined ? changes.category.trim() : item.category,
+    description: changes.description !== undefined ? changes.description.trim() : item.description,
+    updatedAt: new Date().toISOString()
+  };
+  await ddb.send(new PutCommand({ TableName: TABLE, Item: updated }));
+  return updated;
+}
+
+// Deletes one item by its id
+async function deleteItem(itemId) {
+  await ddb.send(new DeleteCommand({ TableName: TABLE, Key: { itemId } }));
+}
+
+module.exports = {
+  readItems, findItemBySku, searchItems, createItem, findItemById, updateItem, deleteItem
+};

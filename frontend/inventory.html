@@ -83,6 +83,14 @@
 </section>
 
 <main id="app" class="layout inventory-layout" hidden>
+    <!-- Managers only: low-stock alerts that SNS put in the SQS queue -->
+    <section id="alerts-section" class="alerts" aria-labelledby="alerts-title" hidden>
+        <div class="alerts-head">
+            <h2 id="alerts-title">Low stock alerts</h2>
+            <button id="alerts-clear" class="link-button" type="button">Clear</button>
+        </div>
+        <ul id="alerts-list" class="alerts-list"></ul>
+    </section>
     <section class="rack" aria-labelledby="warehouse-name">
         <div class="rack-sign">
             <nav class="warehouse-switch" aria-label="Choose a warehouse">
@@ -90,6 +98,26 @@
             </nav>
             <h1 id="warehouse-name"></h1>
             <div id="warehouse-summary" class="rack-summary"></div>
+
+            <!-- Managers only: change the warehouse name or city -->
+            <button id="edit-warehouse-button" class="link-button" type="button" hidden>Edit name or city</button>
+            <form id="warehouse-edit-form" class="inline-edit" hidden>
+                <div class="inline-fields">
+                    <div>
+                        <label for="edit-warehouse-name">Name</label>
+                        <input id="edit-warehouse-name" type="text" maxlength="100" required>
+                    </div>
+                    <div>
+                        <label for="edit-warehouse-location">City</label>
+                        <input id="edit-warehouse-location" type="text" maxlength="100" required>
+                    </div>
+                </div>
+                <div class="inline-actions">
+                    <button class="button-primary" type="submit">Save</button>
+                    <button id="edit-warehouse-cancel" class="button-secondary" type="button">Cancel</button>
+                </div>
+                <p id="warehouse-edit-feedback" class="feedback" aria-live="polite"></p>
+            </form>
         </div>
 
         <table class="stock-table">
