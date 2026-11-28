@@ -229,3 +229,34 @@ Content-Type: application/json
 {
   "decision": "approve"
 }
+
+### ---------- CANCEL A REQUEST ----------
+
+### C01 Staff asks for 3 brackets, to cancel next (expect 201, PENDING)
+# @name toCancel
+POST {{baseUrl}}/api/transfers
+Authorization: Bearer {{staffToken}}
+Content-Type: application/json
+
+{
+  "fromWarehouseId": "WH-101",
+  "toWarehouseId": "WH-1795391950080",
+  "itemId": "ITM-101",
+  "quantity": 3
+}
+
+### C02 The manager tries to cancel the staff member's request (expect 403 NOT_YOUR_REQUEST)
+DELETE {{baseUrl}}/api/transfers/{{toCancel.response.body.$.transferId}}
+Authorization: Bearer {{managerToken}}
+
+### C03 Staff cancels their own waiting request (expect 204)
+DELETE {{baseUrl}}/api/transfers/{{toCancel.response.body.$.transferId}}
+Authorization: Bearer {{staffToken}}
+
+### C04 Cancel it again (expect 404 TRANSFER_NOT_FOUND)
+DELETE {{baseUrl}}/api/transfers/{{toCancel.response.body.$.transferId}}
+Authorization: Bearer {{staffToken}}
+
+### C05 Cancel a request a manager already approved in R22 (expect 409 ALREADY_DECIDED)
+DELETE {{baseUrl}}/api/transfers/{{transferId}}
+Authorization: Bearer {{staffToken}}

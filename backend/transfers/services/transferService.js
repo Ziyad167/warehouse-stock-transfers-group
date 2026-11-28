@@ -1,4 +1,4 @@
-const { ScanCommand, PutCommand, GetCommand, UpdateCommand } = require('@aws-sdk/lib-dynamodb');
+const { ScanCommand, PutCommand, GetCommand, UpdateCommand, DeleteCommand } = require('@aws-sdk/lib-dynamodb');
 const ddb = require('../db');
 
 const TABLE = 'TransferRequests';
@@ -83,4 +83,24 @@ async function decideTransfer(transferId, { status, decidedBy, reason }) {
   }
 }
 
-module.exports = { createTransfer, findTransferById, listTransfers, decideTransfer };
+// Deletes a request, but ONLY if it is still PENDING (a manager may be deciding it right now).
+// Returns true if it was deleted, false if it was not PENDING any more.
+async function deleteTransfer(transferId) {
+  try {
+    await ddb.send(new DeleteCommand({
+      TableName: TABLE,
+      Key: { transferId },
+      ConditionExpression: '#status = :pending',
+      ExpressionAttributeNames: { '#status': 'status' },
+      ExpressionAttributeValues: { ':pending': 'PENDING' }
+    }));
+    return true;
+  } catch (error) {
+    if (error.name === 'ConditionalCheckFailedException') {
+      return false;
+    }
+    throw error;
+  }
+}
+
+module.exports = { createTransfer, findTransferById, listTransfers, decideTransfer, deleteTransfer };

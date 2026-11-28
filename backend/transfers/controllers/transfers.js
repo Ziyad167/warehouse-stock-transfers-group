@@ -156,4 +156,33 @@ async function decideTransfer(req, res, next) {
   }
 }
 
-module.exports = { createTransfer, listTransfers, getTransfer, decideTransfer };
+// DELETE /api/transfers/:id -> 204 (the request is cancelled), or 403 / 404 / 409
+async function cancelTransfer(req, res, next) {
+  try {
+    const transfer = await transferService.findTransferById(req.params.id);
+    if (!transfer) {
+      return sendError(res, 404, 'TRANSFER_NOT_FOUND', 'Transfer request not found.');
+    }
+
+    // Business rule: only the person who asked can cancel the request
+    if (transfer.requestedBy !== req.user.username) {
+      return sendError(res, 403, 'NOT_YOUR_REQUEST', 'Only the person who asked can cancel this request.');
+    }
+
+    // Business rule: once a manager has decided, the request cannot be cancelled
+    if (transfer.status !== 'PENDING') {
+      return sendError(res, 409, 'ALREADY_DECIDED',
+        `This request is already ${transfer.status}, so it cannot be cancelled.`);
+    }
+
+    const deleted = await transferService.deleteTransfer(transfer.transferId);
+    if (!deleted) {
+      return sendError(res, 409, 'ALREADY_DECIDED', 'A manager decided this request just now.');
+    }
+    res.status(204).end();
+  } catch (error) {
+    next(error);
+  }
+}
+
+module.exports = { createTransfer, listTransfers, getTransfer, decideTransfer, cancelTransfer };
